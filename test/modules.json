@@ -21,7 +21,7 @@
             }
         }
     },
-    "newpage": "./newpage.html",
+    "newpage": "/newpage.html",
     "controllers": "http://localhost:8283/controllers.html",
     "focus": "http://localhost:8283/modules/focus.html",
     "boolean": "http://localhost:8283/modules/boolean.html",

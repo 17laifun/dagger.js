@@ -17,12 +17,12 @@ const resolver = raw => (raw instanceof Object) ? Object.assign({
 
 return {
     mode: 'history',
-    // prefix: '/prefix',
+    prefix: 'prefix',
     aliases: {
-        '/index': '/index1',
-        '/demo_local.html': '/index2'
+        'index': 'index1',
+        'demo_local.html': 'index2'
     },
-    default: '/index1',
+    default: 'index1',
     routing: { // path/constants/variables/tailable/modules/children,
         tailable: false,
         constants: {

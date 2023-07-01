@@ -1274,13 +1274,13 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         }
         forEach(ownKeys(this.children), key => this.children[key].update((newValue || emptier())[key], dispatchSource.mutation));
     }
-}) => styleResolver('[dg-cloak] { display: none !important; }', 'dg-global-style', false) && document.addEventListener('DOMContentLoaded', () => Promise.all(['options', 'modules', 'routers'].map(type => configResolver(document, document.baseURI, type))).then(((base = '', currentStyleSet = null, routers = null, resolvedRouters = null, rootRouter = null, routerConfigs = null, styleModules = { '': styleModuleSet }, anchorResolver = (anchor, event = null) => {
+}) => styleResolver('[dg-cloak] { display: none !important; }', 'dg-global-style', false) && document.addEventListener('DOMContentLoaded', () => Promise.all(['options', 'modules', 'routers'].map(type => configResolver(document, document.baseURI, type))).then(((base = '', currentStyleSet = null, originalPushState = history.pushState, originalReplaceState = history.replaceState, routers = null, resolvedRouters = null, rootRouter = null, routerConfigs = null, styleModules = { '': styleModuleSet }, anchorResolver = (anchor, event = null) => {
     if (anchor.startsWith('#@')) {
         const name = anchor.substring(2), anchorElement = document.getElementById(name) || querySelector(document, `a[name=${ name }]`);
         if(!anchorElement) { return; }
         event && event.preventDefault();
         anchorElement.scrollIntoView();
-        location.href.endsWith(anchor) || history.pushState({}, '', `${ location.href }${ anchor }`);
+        location.href.endsWith(anchor) || originalPushState.call(history, null, '', `${ location.href }${ anchor }`);
         return true;
     }
 }, routingChangeResolver = ((routerChangeResolver = ((resolver = nextRouter => {
@@ -1306,24 +1306,22 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     styleModuleSet = styleModules[path] || (styleModules[path] = new Set);
     groupStarter(`resolving modules of the router "${ nextRouter.path }"`);
     return rootNamespace.resolve(nextRouter.modules).then(() => resolver(nextRouter));
-})()) => (fullPath = (Object.is(routerConfigs.mode, 'history') ? `${ location.pathname }${ location.search }` : location.hash)) => {
-    fullPath = fullPath.replace(routerConfigs.prefix, '');
+})()) => () => {
     const slash = '/', anchorIndex = location.hash.lastIndexOf('#@'), anchor = (anchorIndex >= 0) ? location.hash.substring(anchorIndex) : '';
-    fullPath = fullPath.replace(anchor, '');
+    let fullPath = ((Object.is(routerConfigs.mode, 'history') ? `${ location.pathname }${ location.search }` : location.hash.replace(anchor, ''))).replace(routerConfigs.prefix, '');
     fullPath.startsWith(slash) || (fullPath = `${ slash }${ fullPath }`);
-    const { mode, aliases, prefix } = routerConfigs, [path = '', query = ''] = fullPath.split('?'), redirectPath = aliases[path];
+    const { mode, aliases, prefix } = routerConfigs, [path = '', query = ''] = fullPath.split('?'), redirectPath = aliases[path.substring(1)];
     if (redirectPath) {
-        logger(`\ud83e\udd98 router alias matched, redirecting router from "${ path }" to "${ redirectPath }"`);
-        return routingChangeResolver(`${ query ? `${ redirectPath }?${ query }` : redirectPath }${ anchor }`);
+        logger(`\ud83e\udd98 router alias matched, redirecting router from "${ path }" to "/${ redirectPath }"`);
+        return history.replaceState(null, '', `${ query ? `${ redirectPath }?${ query }` : redirectPath }${ anchor }`);
     }
     const scenarios = {}, paths = Object.is(path, slash) ? [''] : path.split(slash);
     routers = [];
     if (!rootRouter.match(routers, scenarios, paths)) {
         if (Reflect.has(routerConfigs, 'default')) {
             warner(`\u274e The router "${ path }" is invalid, redirect to the default router "${ routerConfigs.default }"`);
-            const defaultPath = routerConfigs.default, resolvedPath = `${ prefix }${ query ? `${ defaultPath }?${ query }` : defaultPath }${ anchor }`;
-            history.pushState({}, '', resolvedPath);
-            return routingChangeResolver(resolvedPath);
+            const defaultPath = routerConfigs.default, resolvedPath = `${ query ? `${ defaultPath }?${ query }` : defaultPath }${ anchor }`;
+            return history.pushState(null, '', resolvedPath);
         } else {
             asserter(`The router "${ path }" is invalid`);
         }
@@ -1346,7 +1344,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     Promise.all([...sentrySet].map(sentry => Promise.resolve(sentry.processor(nextRouter)).then(prevent => ({ sentry, prevent })))).then(results => {
         logger(`\u2705 resolved sentries within router "${ (rootScope.$router || {}).path || '/' }"`);
         const matchedOwners = results.filter(result => result.prevent).map(result => result.sentry.owner);
-        matchedOwners.length ? forEach(matchedOwners, owner => warner(['\u274e The router redirect is prevented by the "$sentry" directive declared on the "%o" element', owner.node || owner.profile.node])) || history.replaceState(null, '', `${ prefix }${ rootScope.$router.path }`) : routerChangeResolver(nextRouter);
+        matchedOwners.length ? forEach(matchedOwners, owner => warner(['\u274e The router redirect is prevented by the "$sentry" directive declared on the "%o" element', owner.node || owner.profile.node])) || originalReplaceState.call(history, null, '', `${ prefix }${ rootScope.$router.path.substring(1) }`) : routerChangeResolver(nextRouter);
     });
 })(), Router = class {
     constructor (router, parent = null) {
@@ -1412,14 +1410,11 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     eventDelegator('click', window, event => {
         const node = event.target;
         if (!['A', 'AREA'].includes(node.tagName) || !node.hasAttribute('href')) { return; }
-        const href = node.getAttribute('href').trim(), isHistoryMode = Object.is(routerConfigs.mode, 'history');
+        const href = node.getAttribute('href').trim();
         if (anchorResolver(href, event)) { return; }
-        const prefix = routerConfigs.prefix;
-        href && ![prefix, '.', '/'].some(prefix => href.startsWith(prefix)) && !Object.is(href, new URL(href, document.baseURI).href) && (node.href = `${ prefix }/${ href }`);
-        if (isHistoryMode) {
+        if (href && !['.', '/', 'http:', 'https:'].some(prefix => href.startsWith(prefix))) {
             event.preventDefault();
-            history.pushState({}, '', node.href);
-            routingChangeResolver();
+            history.pushState(null, '', href);
         }
     }, true);
     const resetToken = { detail: true }, changeEvent = new CustomEvent('change', resetToken), inputEvent = new CustomEvent('input', resetToken);
@@ -1430,6 +1425,14 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     register(Date, ['setDate', 'setFullYear', 'setHours', 'setMilliseconds', 'setMinutes', 'setMonth', 'setSeconds', 'setTime', 'setUTCDate', 'setUTCFullYear', 'setUTCHours', 'setUTCMilliseconds', 'setUTCMinutes', 'setUTCMonth', 'setUTCSeconds', 'setYear']) || register(Map, ['set', 'delete', 'clear']) || register(Set, ['add', 'delete', 'clear']) || register(WeakMap, ['set', 'delete']) || register(WeakSet, ['add', 'delete']);
     JSON.stringify = processorWrapper(JSON.stringify);
     forEach(['concat', 'copyWithin', 'fill', 'find', 'findIndex', 'lastIndexOf', 'pop', 'push', 'reverse', 'shift', 'unshift', 'slice', 'sort', 'splice', 'includes', 'indexOf', 'join', 'keys', 'entries', 'values', 'forEach', 'filter', 'flat', 'flatMap', 'map', 'every', 'some', 'reduce', 'reduceRight', 'toLocaleString', 'toString', 'at'], key => (Array.prototype[key] = processorWrapper(Array.prototype[key])));
+    const stateResolver = (method, parameters) => {
+        const url = (parameters || [])[2], prefix = routerConfigs.prefix;
+        url && !url.startsWith(prefix) && (parameters[2] = `${ prefix }${ url }`);
+        originalPushState.apply(history, parameters);
+        routingChangeResolver();
+    };
+    history.pushState = (...parameters) => stateResolver(originalPushState, parameters);
+    history.replaceState = (...parameters) => stateResolver(originalReplaceState, parameters);
     window.$dagger = Object.freeze(Object.assign(emptier(), { register, version: '1.0.0-RC-debug', validator: (data, path, { type, assert, required } = {}) => {
         if ((data == null) || Number.isNaN(data)) { asserter([`The data "${ path }" should be assigned a valid value instead of "%o" before using`, data], !required); }
         type && (Array.isArray(type) ? asserter([`The type of data "${ path }" should be one of "%o" instead of "%o"`, type, (data.constructor || {}).name], type.some(type => (data instanceof type))) : asserter([`The type of data "${ path }" should be "%o" instead of "%o"`, type, (data.constructor || {}).name], data instanceof type));
@@ -1452,12 +1455,17 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         asserter(`The integrity validation is available with "https" protocol or "localhost" host only, while the current origin is "${ location.origin }"`, !daggerOptions.integrity || crypto.subtle);
         base = modules.base;
         routerConfigs = routers.content;
-        const prefix = routerConfigs.prefix;
-        if (Object.is(routerConfigs.mode, 'history')) {
-            asserter('It\'s illegal to use "#" as prefix in "history" router mode', !prefix.startsWith('#'));
+        const prefix = routerConfigs.prefix.trim(), isHistoryMode = Object.is(routerConfigs.mode, 'history');
+        if (prefix) {
+            if (isHistoryMode) {
+                asserter(`In "history" router mode, it's illegal to use "${ prefix }" as router prefix because it contains non-word character`, /^\w*$/.test(prefix));
+                routerConfigs.prefix = `/${ prefix }/`;
+            } else {
+                asserter(`In "hash" router mode, it's illegal to use "${ prefix }" as router prefix because it starts with "@"`, !prefix.startsWith('@'));
+                routerConfigs.prefix = `#${ prefix }/`;
+            }
         } else {
-            asserter('It\'s illegal to use "@" as prefix in "hash" router mode', !prefix.startsWith('@'));
-            routerConfigs.prefix = `#${ prefix }`;
+            routerConfigs.prefix = isHistoryMode ? '/' : '#';
         }
         rootScope = Object.seal(proxyResolver({ $router: null }));
         moduleConfigNormalizer(modules.content);
@@ -1477,8 +1485,8 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
             const rootNodes = [...rootNodeSet];
             forEach(rootNodes, rootNode => Reflect.construct(NodeProfile, [rootNode, rootNamespace, rootNodeProfiles, null, true]));
             warner(['\u274e No node with valid directive was detected under root elements "%o"', rootNodes], rootNodeProfiles.length);
-            eventDelegator('popstate', window, () => routingChangeResolver());
-            routingChangeResolver();
+            eventDelegator('popstate', window, routingChangeResolver);
+            history.replaceState(null, '', isHistoryMode ? `${ location.pathname }${ location.search }${ location.hash }` : location.hash);
         };
         rootNamespace = new ModuleProfile({ content: modules.content, type: moduleType.namespace }, base);
         rootNamespace.resolve(new Set(arrayWrapper(routing.modules || []))).then(() => styleModuleSet.forEach(style => (style.disabled = false)) || groupEnder('resolving top level modules') || new NodeContext(new NodeProfile(html)));

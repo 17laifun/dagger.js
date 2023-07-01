@@ -71,18 +71,15 @@
       <template @slot="1">${ item }</template>
     </prefix>-->
     <div $exist="$router.path.includes('newpage')" $html="'newpage'"></div>
-    <div +loading="{ state: true }">
-      <button +click="state = false">click</button>
-      ${ state }
-    </div>
-    <a href="/newpage">newpage</a>
+    <button +click="history.pushState({}, '', 'newpage')">click</button>
+    <a href="newpage">newpage</a>
     <a href="#@anchor1">anchor1</a>
     <a href="#@anchor2">anchor2</a>
     <a href="#@anchor3">anchor3</a>
     <span class="raw">Please click the following links to see directives demo:</span>
     <a $exist="true" href="mailto://dagger8224@gmail.com">mail to author</a>
     <div +click#stop="console.log('div click bubble', $event.currentTarget, $event.target)">
-      <button +click#outside="console.log('button click bubble/outside', $event.currentTarget, $event.target)">click</button>
+      <!--<button +click#outside="console.log('button click bubble/outside', $event.currentTarget, $event.target)">click</button>-->
       <div class="mountPoint1" +loading="{ item: 'default-item' }" $html#router="$router.constants.template"></div>
       <span>This the end!</span>
     </div>
