@@ -380,7 +380,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
                     this.type = moduleType.string;
                 }
             }
-            asserter([`The element "%o" of type "${ type }" is not supported`, element], this.type);
+            asserter([`The element "%o" of type "${ type || 'undefined' }" is not supported`, element], this.type);
         }
         return serializer([this.resolveIntegrity(element.innerHTML), content => this.resolveContent(content)]);
     }
