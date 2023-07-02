@@ -2,13 +2,11 @@
     {
         "tag": "debug",
         "path": "",
-        "desc": "debug version",
-        "integrity": "sha256-N/eaOax8vjpVDpTdU/eQ5uwzKkFxXyeM56nf0wtEqO4="
+        "desc": "debug version"
     },
     {
         "tag": "release",
         "path": ".release",
-        "desc": "release version",
-        "integrity": "sha256-+9E2KDtgJ9DKSmRU9NQ8l/s41lWzCn7niminMfcimL4="
+        "desc": "release version"
     }
 ]

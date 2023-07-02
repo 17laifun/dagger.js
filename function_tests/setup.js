@@ -9,16 +9,16 @@ const versions = require('./versions.json');
 const frameworks = {};
 versions.forEach(({ tag, path }) => (frameworks[tag] = readFileSync(`../src/dagger${ path }.js`).toString()));
 
-const initialize = async (tag, integrity, contentPath, configs = '') => browser.newPage().then(page => page.setContent(`${ htmlTemplateStart.replace('%CONFIGS%', configs).replace('%INTEGRITY%', integrity) }${ frameworks[tag] }${ htmlTemplateEnd.replace('%CONTENT%', readFileSync(contentPath)) }`) && page);
+const initialize = async (tag, contentPath, options, modules, routers) => browser.newPage().then(page => page.setContent(`${ htmlTemplateStart.replace('%OPTIONS%', options).replace('%MODULES%', modules).replace('%ROUTERS%', routers) }${ frameworks[tag] }${ htmlTemplateEnd.replace('%CONTENT%', readFileSync(contentPath)) }`) && page);
 
-global.runner = (name, describe, it, dirName, callback, contentPath = 'content.html') => describe(name, () => versions.forEach(({ tag, desc, integrity }) => it(desc, () => initialize(tag, integrity, resolve(dirName, contentPath)).then(page => {
+global.runner = (name, describe, it, dirName, callback, { contentPath = 'content.html', options = '{ integrity: false }', modules = '{}', routers = '{}' } = {}) => describe(name, () => versions.forEach(({ tag, desc }) => it(desc, () => initialize(tag, resolve(dirName, contentPath), options, modules, routers).then(page => {
     pageExtend(page);
     let promises = callback(page.jQuery.bind(page));
     Array.isArray(promises) || (promises = [promises]);
     return Promise.all(promises.map(promise => Object.is(typeof promise, 'function') ? promise() : promise)).then(() => page.close());
 }))));
 
-module.exports = async () => (global.browser = await puppeteer.launch({
+module.exports = () => puppeteer.launch({
     headless: true,
     /* args: [
         '–disable-gpu',
@@ -29,4 +29,4 @@ module.exports = async () => (global.browser = await puppeteer.launch({
         '–no-zygote',
         '–single-process'
     ] */
-}));
+}).then(browser => (global.browser = browser));
