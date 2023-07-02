@@ -73,9 +73,9 @@
     <div $exist="$router.path.includes('newpage')" $html="'newpage'"></div>
     <button +click="history.pushState({}, '', 'newpage')">click</button>
     <a href="newpage">newpage</a>
-    <a href="#@anchor1">anchor1</a>
-    <a href="#@anchor2">anchor2</a>
-    <a href="#@anchor3">anchor3</a>
+    <a href="#anchor1">anchor1</a>
+    <a href="#anchor2">anchor2</a>
+    <a href="#anchor3">anchor3</a>
     <span class="raw">Please click the following links to see directives demo:</span>
     <a $exist="true" href="mailto://dagger8224@gmail.com">mail to author</a>
     <div +click#stop="console.log('div click bubble', $event.currentTarget, $event.target)">

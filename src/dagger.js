@@ -138,7 +138,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         ignoreMismatch || asserter(`Failed to get element matched selector "${ selector }"`, all ? element.length : element);
         return element;
     } catch (error) {
-        asserter(`The string "${ selector }" is not a valid querySelector`);
+        asserter(`The string "${ selector }" is not a valid querySelector`, ignoreMismatch);
     }
 }, remoteResourceResolver = (url, integrity = '') => fetch(url, daggerOptions.integrity && integrity ? { integrity: `sha256-${ integrity }` } : {}).then(response => {
     if (response.ok) {
@@ -763,7 +763,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
                     asserter(['The value of "@directive" expression should be "string" instead of "%o"', expression.value], isString(expression.value));
                     const name = expression.name.trim();
                     asserter([`It's illegal to create "@raw", "@directive" or "$each" directive with the "@directive" expression "%o"`, expressions], !name.startsWith('@raw') && !name.startsWith('@directive') && !name.startsWith('$each'));
-                    profile.resolveDirective(name, expression.value || '', this.directives);
+                    profile.resolveDirective(name, expression.value, this.directives);
                 });
                 processorResolver();
             }
@@ -1275,13 +1275,15 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         forEach(ownKeys(this.children), key => this.children[key].update((newValue || emptier())[key], dispatchSource.mutation));
     }
 }) => styleResolver('[dg-cloak] { display: none !important; }', 'dg-global-style', false) && document.addEventListener('DOMContentLoaded', () => Promise.all(['options', 'modules', 'routers'].map(type => configResolver(document, document.baseURI, type))).then(((base = '', currentStyleSet = null, originalPushState = history.pushState, originalReplaceState = history.replaceState, routers = null, resolvedRouters = null, rootRouter = null, routerConfigs = null, styleModules = { '': styleModuleSet }, anchorResolver = (anchor, event = null) => {
-    if (anchor.startsWith('#@')) {
-        const name = anchor.substring(2), anchorElement = document.getElementById(name) || querySelector(document, `a[name=${ name }]`);
+    try {
+        const anchorElement = document.getElementById(anchor) || querySelector(document, `a[name=${ anchor }]`, false, true);
         if(!anchorElement) { return; }
         event && event.preventDefault();
         anchorElement.scrollIntoView();
-        location.href.endsWith(anchor) || originalPushState.call(history, null, '', `${ location.href }${ anchor }`);
+        location.href.endsWith(`#@${ anchor }`) || originalPushState.call(history, null, '', `${ location.href }#@${ anchor }`);
         return true;
+    } catch (error) {
+        return;
     }
 }, routingChangeResolver = ((routerChangeResolver = ((resolver = nextRouter => {
     groupEnder(`resolving modules of the router "${ nextRouter.path }"`);
@@ -1307,7 +1309,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     groupStarter(`resolving modules of the router "${ nextRouter.path }"`);
     return rootNamespace.resolve(nextRouter.modules).then(() => resolver(nextRouter));
 })()) => () => {
-    const slash = '/', anchorIndex = location.hash.lastIndexOf('#@'), anchor = (anchorIndex >= 0) ? location.hash.substring(anchorIndex) : '';
+    const slash = '/', anchorIndex = location.hash.lastIndexOf('#@'), anchor = (anchorIndex >= 0) ? location.hash.substring(anchorIndex + 2) : '';
     let fullPath = ((Object.is(routerConfigs.mode, 'history') ? `${ location.pathname }${ location.search }` : location.hash.replace(anchor, ''))).replace(routerConfigs.prefix, '');
     fullPath.startsWith(slash) || (fullPath = `${ slash }${ fullPath }`);
     const { mode, aliases, prefix } = routerConfigs, [path = '', query = ''] = fullPath.split('?'), redirectPath = aliases[path.substring(1)];
@@ -1411,7 +1413,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         const node = event.target;
         if (!['A', 'AREA'].includes(node.tagName) || !node.hasAttribute('href')) { return; }
         const href = node.getAttribute('href').trim();
-        if (anchorResolver(href, event)) { return; }
+        if (href.startsWith('#') && anchorResolver(href.substring(1), event)) { return; }
         if (href && !['.', '/', 'http:', 'https:'].some(prefix => href.startsWith(prefix))) {
             event.preventDefault();
             history.pushState(null, '', href);
