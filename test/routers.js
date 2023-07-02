@@ -16,7 +16,7 @@ const resolver = raw => (raw instanceof Object) ? Object.assign({
 };
 
 return {
-    mode: 'history',
+    // mode: 'history',
     prefix: 'prefix',
     aliases: {
         'index': 'index1',

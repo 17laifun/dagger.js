@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <style>
+      [dg-cloak] {
+        display: none !important;
+      }
+    </style>
+    <script
+      type="module"
+      crossorigin="anonymous"
+      src="http://localhost:8280/dagger.release.js"
+      defer
+    ></script>
+    <script type="dagger/routers">
+        {
+            mode: 'hash',
+            aliases: {
+                'index': 'index1'
+            },
+            default: 'default-router',
+            routing: {
+                children: [{
+                    path: 'index1'
+                }, {
+                    path: 'index2'
+                }]
+            }
+        }
+    </script>
+    <title>test</title>
+  </head>
+
+  <body dg-cloak>
+    <button id="button1" +click="history.pushState(null, '', 'router1')">button1</button>
+  </body>
+</html>

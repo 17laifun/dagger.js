@@ -639,7 +639,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
                         const index = expression.indexOf('='), withoutValue = index < 0;
                         expression = withoutValue ? { name: expression, value: '' } : { name: expression.substring(0, index), value: expression.substring(index + 1) };
                     }
-                    profile.resolveDirective(expression.name.trim(), expression.value || '', this.directives);
+                    profile.resolveDirective(expression.name.trim(), expression.value, this.directives);
                 });
                 processorResolver();
             }
@@ -1122,14 +1122,16 @@ export default ((context = Symbol('context'), currentController = null, directiv
         }
         forEach(ownKeys(this.children), key => this.children[key].update((newValue || emptier())[key], dispatchSource.mutation));
     }
-}) => styleResolver('[dg-cloak] { display: none !important; }', 'dg-global-style', false) && document.addEventListener('DOMContentLoaded', () => Promise.all(['options', 'modules', 'routers'].map(type => configResolver(document, document.baseURI, type))).then(((base = '', currentStyleSet = null, routers = null, resolvedRouters = null, rootRouter = null, routerConfigs = null, styleModules = { '': styleModuleSet }, anchorResolver = (anchor, event = null) => {
-    if (anchor.startsWith('#@')) {
-        const name = anchor.substring(2), anchorElement = document.getElementById(name) || querySelector(document, `a[name=${ name }]`);
+}) => styleResolver('[dg-cloak] { display: none !important; }', 'dg-global-style', false) && document.addEventListener('DOMContentLoaded', () => Promise.all(['options', 'modules', 'routers'].map(type => configResolver(document, document.baseURI, type))).then(((base = '', currentStyleSet = null, originalPushState = history.pushState, originalReplaceState = history.replaceState, rootRouter = null, routerConfigs = null, styleModules = { '': styleModuleSet }, anchorResolver = (anchor, event = null) => {
+    try {
+        const anchorElement = document.getElementById(anchor) || querySelector(document, `a[name=${ anchor }]`);
         if(!anchorElement) { return; }
         event && event.preventDefault();
         anchorElement.scrollIntoView();
-        location.href.endsWith(anchor) || history.pushState({}, '', `${ location.href }${ anchor }`);
+        location.href.endsWith(`#@${ anchor }`) || originalPushState.call(history, null, '', `${ location.href }#@${ anchor }`);
         return true;
+    } catch (error) {
+        return;
     }
 }, routingChangeResolver = ((routerChangeResolver = ((resolver = nextRouter => {
     processorResolver();
@@ -1148,28 +1150,24 @@ export default ((context = Symbol('context'), currentController = null, directiv
     const path = nextRouter.path;
     styleModuleSet = styleModules[path] || (styleModules[path] = new Set);
     return rootNamespace.resolve(nextRouter.modules).then(() => resolver(nextRouter));
-})()) => (fullPath = (Object.is(routerConfigs.mode, 'history') ? `${ location.pathname }${ location.search }` : location.hash)) => {
-    fullPath = fullPath.replace(routerConfigs.prefix, '');
-    const slash = '/', anchorIndex = location.hash.lastIndexOf('#@'), anchor = (anchorIndex >= 0) ? location.hash.substring(anchorIndex) : '';
-    fullPath = fullPath.replace(anchor, '');
+})()) => () => {
+    const slash = '/', anchorIndex = location.hash.lastIndexOf('#@'), anchor = (anchorIndex >= 0) ? location.hash.substring(anchorIndex + 2) : '';
+    let fullPath = ((Object.is(routerConfigs.mode, 'history') ? `${ location.pathname }${ location.search }` : location.hash.replace(anchor, ''))).replace(routerConfigs.prefix, '');
     fullPath.startsWith(slash) || (fullPath = `${ slash }${ fullPath }`);
-    const { mode, aliases, prefix } = routerConfigs, [path = '', query = ''] = fullPath.split('?'), redirectPath = aliases[path];
+    const { mode, aliases, prefix } = routerConfigs, [path = '', query = ''] = fullPath.split('?'), redirectPath = aliases[path.substring(1)];
     if (redirectPath) {
-        return routingChangeResolver(`${ query ? `${ redirectPath }?${ query }` : redirectPath }${ anchor }`);
+        return history.replaceState(null, '', `${ query ? `${ redirectPath }?${ query }` : redirectPath }${ anchor }`);
     }
-    const scenarios = {}, paths = Object.is(path, slash) ? [''] : path.split(slash);
-    routers = [];
+    const scenarios = {}, paths = Object.is(path, slash) ? [''] : path.split(slash), routers = [];
     if (!rootRouter.match(routers, scenarios, paths)) {
         if (Reflect.has(routerConfigs, 'default')) {
-            const defaultPath = routerConfigs.default, resolvedPath = `${ prefix }${ query ? `${ defaultPath }?${ query }` : defaultPath }${ anchor }`;
-            history.pushState({}, '', resolvedPath);
-            return routingChangeResolver(resolvedPath);
+            const defaultPath = routerConfigs.default, resolvedPath = `${ query ? `${ defaultPath }?${ query }` : defaultPath }${ anchor }`;
+            return history.pushState(null, '', resolvedPath);
         } else {
             return;
         }
     }
-    resolvedRouters = routers.slice().reverse();
-    const queries = {}, variables = Object.assign({}, ...resolvedRouters.map(router => router.variables)), constants = Object.assign({}, ...resolvedRouters.map(router => router.constants));
+    const resolvedRouters = routers.slice().reverse(), queries = {}, variables = Object.assign({}, ...resolvedRouters.map(router => router.variables)), constants = Object.assign({}, ...resolvedRouters.map(router => router.constants));
     query && forEach([...new URLSearchParams(query)], ([key, value]) => (queries[key] = value));
     forEach(Object.keys(variables), key => {
         if (Reflect.has(queries, key) && !Reflect.has(constants, key)) {
@@ -1182,7 +1180,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
     const nextRouter = { mode, prefix, path, paths, modules: new Set(resolvedRouters.map(router => router.modules).flat()), query, queries, scenarios, variables, constants, anchor };
     Promise.all([...sentrySet].map(sentry => Promise.resolve(sentry.processor(nextRouter)).then(prevent => ({ sentry, prevent })))).then(results => {
         const matchedOwners = results.filter(result => result.prevent).map(result => result.sentry.owner);
-        matchedOwners.length ? history.replaceState(null, '', `${ prefix }${ rootScope.$router.path }`) : routerChangeResolver(nextRouter);
+        matchedOwners.length ? originalReplaceState.call(history, null, '', `${ prefix }${ rootScope.$router.path.substring(1) }`) : routerChangeResolver(nextRouter);
     });
 })(), Router = class {
     constructor (router, parent = null) {
@@ -1232,14 +1230,11 @@ export default ((context = Symbol('context'), currentController = null, directiv
     eventDelegator('click', window, event => {
         const node = event.target;
         if (!['A', 'AREA'].includes(node.tagName) || !node.hasAttribute('href')) { return; }
-        const href = node.getAttribute('href').trim(), isHistoryMode = Object.is(routerConfigs.mode, 'history');
-        if (anchorResolver(href, event)) { return; }
-        const prefix = routerConfigs.prefix;
-        href && ![prefix, '.', '/'].some(prefix => href.startsWith(prefix)) && !Object.is(href, new URL(href, document.baseURI).href) && (node.href = `${ prefix }/${ href }`);
-        if (isHistoryMode) {
+        const href = node.getAttribute('href').trim();
+        if (href.startsWith('#') && anchorResolver(href.substring(1), event)) { return; }
+        if (href && !['.', '/', 'http:', 'https:'].some(prefix => href.startsWith(prefix))) {
             event.preventDefault();
-            history.pushState({}, '', node.href);
-            routingChangeResolver();
+            history.pushState(null, '', href);
         }
     }, true);
     const resetToken = { detail: true }, changeEvent = new CustomEvent('change', resetToken), inputEvent = new CustomEvent('input', resetToken);
@@ -1250,12 +1245,20 @@ export default ((context = Symbol('context'), currentController = null, directiv
     register(Date, ['setDate', 'setFullYear', 'setHours', 'setMilliseconds', 'setMinutes', 'setMonth', 'setSeconds', 'setTime', 'setUTCDate', 'setUTCFullYear', 'setUTCHours', 'setUTCMilliseconds', 'setUTCMinutes', 'setUTCMonth', 'setUTCSeconds', 'setYear']) || register(Map, ['set', 'delete', 'clear']) || register(Set, ['add', 'delete', 'clear']) || register(WeakMap, ['set', 'delete']) || register(WeakSet, ['add', 'delete']);
     JSON.stringify = processorWrapper(JSON.stringify);
     forEach(['concat', 'copyWithin', 'fill', 'find', 'findIndex', 'lastIndexOf', 'pop', 'push', 'reverse', 'shift', 'unshift', 'slice', 'sort', 'splice', 'includes', 'indexOf', 'join', 'keys', 'entries', 'values', 'forEach', 'filter', 'flat', 'flatMap', 'map', 'every', 'some', 'reduce', 'reduceRight', 'toLocaleString', 'toString', 'at'], key => (Array.prototype[key] = processorWrapper(Array.prototype[key])));
-    window.$dagger = Object.freeze(Object.assign(emptier(), { register, version: '1.0.0-RC-release' }));
+    const stateResolver = (method, parameters) => {
+        const url = (parameters || [])[2], prefix = routerConfigs.prefix;
+        url && !url.startsWith(prefix) && (parameters[2] = `${ prefix }${ url }`);
+        originalPushState.apply(history, parameters);
+        routingChangeResolver();
+    };
+    history.pushState = (...parameters) => stateResolver(originalPushState, parameters);
+    history.replaceState = (...parameters) => stateResolver(originalReplaceState, parameters);
+    window.$dagger = Object.freeze(Object.assign(emptier(), { register, version: '1.0.0-RC-release', validator: () => {} }));
     return ([options, modules, routers]) => {
         base = modules.base;
         routerConfigs = routers.content;
-        const prefix = routerConfigs.prefix;
-        Object.is(routerConfigs.mode, 'history') || (routerConfigs.prefix = `#${ prefix }`);
+        const prefix = routerConfigs.prefix, isHistoryMode = Object.is(routerConfigs.mode, 'history');
+        routerConfigs.prefix = `${ isHistoryMode ? '/' : '#' }${ prefix ? `${ prefix }/` : '' }`;
         rootScope = Object.seal(proxyResolver({ $router: null }));
         moduleConfigNormalizer(modules.content);
         const html = document.documentElement, routing = routerConfigs.routing || { modules: Object.keys(modules.content) };
@@ -1267,8 +1270,8 @@ export default ((context = Symbol('context'), currentController = null, directiv
             rootNodeSet.delete(html);
             const rootNodes = [...rootNodeSet];
             forEach(rootNodes, rootNode => Reflect.construct(NodeProfile, [rootNode, rootNamespace, rootNodeProfiles, null, true]));
-            eventDelegator('popstate', window, () => routingChangeResolver());
-            routingChangeResolver();
+            eventDelegator('popstate', window, routingChangeResolver);
+            history.replaceState(null, '', isHistoryMode ? `${ location.pathname }${ location.search }${ location.hash }` : location.hash);
         };
         rootNamespace = new ModuleProfile({ content: modules.content, type: moduleType.namespace }, base);
         rootNamespace.resolve(new Set(arrayWrapper(routing.modules || []))).then(() => styleModuleSet.forEach(style => (style.disabled = false)) || new NodeContext(new NodeProfile(html)));
