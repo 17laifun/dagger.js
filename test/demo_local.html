@@ -31,6 +31,7 @@
       <div class="prefix-raw">prefix</div>
       <div class="prefix-plain">prefix-${ item }</div>
       <div $class="`prefix-${ item }`">prefix-${ item }</div>
+      <modules.namespace.inner.inner_template321></modules.namespace.inner.inner_template321>
       <suffix $each="'string'" $exist="true" @directive="{ name: '$exist', value: `${ index > 2 }` }"></suffix>
     </template>
     <template id="suffix">
@@ -67,9 +68,9 @@
     </style>
   </head>
   <body dg-cloak +click="console.log('body click bubble', $event.currentTarget)" +click#capture="console.log('body click capture', $event.currentTarget)">
-    <!--<prefix>
+    <prefix +loading="{ html: '<button>click</button>'}">
       <template @slot="1">${ item }</template>
-    </prefix>-->
+    </prefix>
     <div $exist="$router.path.includes('newpage')" $html="'newpage'"></div>
     <button +click="history.pushState({}, '', 'newpage')">click</button>
     <a href="newpage">newpage</a>

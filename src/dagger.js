@@ -258,7 +258,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     constructor (config = {}, base = '', name = '', parent = null) {
         name = name.trim();
         asserter(`The module name should be valid string matched RegExp "${ moduleNameRegExp.toString() }" instead of "${ name }"`, !parent || moduleNameRegExp.test(name));
-        this.layer = name ? (((parent || {}).layer || 0) + 1) : 0, this.space = new Array(this.layer * 4).fill(' ').join(''), this.name = name, this.state = 'unresolved', this.childrenCache = emptier(), this.valid = true, this.module = this.integrity = this.parent = this.children = this.type = this.content = this.resolvedContent = this.referenceSet = null;
+        this.layer = name ? (((parent || {}).layer || 0) + 1) : 0, this.space = new Array(this.layer * 4).fill(' ').join(''), this.name = name, this.state = 'unresolved', this.valid = true, this.module = this.integrity = this.parent = this.children = this.type = this.content = this.resolvedContent = null;
         if (parent) {
             this.parent = parent, this.path = parent.path ? `${ parent.path }.${ name }` : name, this.tags = [...parent.tags, this.path.replace(/\./g, '__')], this.baseElement = parent.baseElement;
         } else {
@@ -281,14 +281,15 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         this.config = config, this.promise = new Promise(resolver => (this.resolver = resolver)), this.base = new URL(config.base || base, (parent || {}).base || document.baseURI).href;
         config.prefetch && this.resolve();
     }
-    fetch (paths, asynchronous = false, ignoreMismatch = false) {
-        Array.isArray(paths) || (paths = paths.split('.'));
-        if (!paths.length) { return this; }
-        const path = paths.shift().trim(), moduleProfile = this.childrenCache[path] || (this.childrenCache[path] = (this.children || []).find(child => Object.is(child.name, path) && child.valid));
-        if (ignoreMismatch && !moduleProfile) { return null; }
-        asserter(`${ this.space }Failed to fetch module "${ path }" within ${ this.path ? `namespace "${ this.path }"` : 'the root namespace' }`, !Object.is(moduleProfile));
-        asserter(`The module "${ moduleProfile.path }" is referenced but not declared in the "modules" field of the current router`, !Object.is(moduleProfile.state, 'unresolved'));
-        return asynchronous ? moduleProfile.resolve().then(moduleProfile => moduleProfile.valid && moduleProfile.fetch(paths)) : (moduleProfile.valid && moduleProfile.fetch(paths));
+    fetchViewModule (name) {
+        const moduleProfile = (this.children || []).find(child => Object.is(child.name, name) && child.valid);
+        moduleProfile && asserter(`The module "${ moduleProfile.path }" is referenced but not declared in the "modules" field of the current router`, !Object.is(moduleProfile.state, 'unresolved'));
+        if (moduleProfile) {
+            return moduleProfile;
+        } else {
+            asserter(`There is no valid module named "${ name }" found`, this.parent);
+            return this.parent.fetchViewModule(name);
+        }
     }
     resolve (childNameSet = null) {
         const type = this.type;
@@ -468,17 +469,6 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
                 const base = new URL(uri, this.base).href;
                 pipeline = [(_, token) => serializer([remoteResourceResolver(base, this.integrity), result => result || (token.stop = true)]), ({ content, type }) => this.resolveRemoteType(content, type, base) || this.resolveIntegrity(content), content => this.resolveContent(content)];
             }
-        } else if (moduleNameRegExp.test(uri)) { // alias
-            asserter(`It's illegal to set module "${ this.path }" as an alias of itself`, !Object.is(this.name, uri));
-            const moduleProfile = this.parent.fetch(uri);
-            if (moduleProfile.referenceSet) {
-                asserter(`There is a circular reference between module "${ this.path }" and module "${ moduleProfile.path }"`, !moduleProfile.referenceSet.has(this) && ![...moduleProfile.referenceSet].some(moduleProfile => moduleProfile.referenceSet.has(this)));
-                originalSetAdd.call(moduleProfile.referenceSet, this);
-            } else {
-                moduleProfile.referenceSet = new Set([this]);
-            }
-            this.referenceSet ? originalSetAdd.call(this.referenceSet, moduleProfile) : (this.referenceSet = new Set([moduleProfile]));
-            pipeline = [moduleProfile.resolve(), moduleProfile => this.resolveCachedModuleProfile(moduleProfile)];
         } else { // selector
             const element = querySelector(this.baseElement, uri), cachedProfile = elementProfileCacheMap.get(element);
             if (cachedProfile) {
@@ -1014,19 +1004,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     const directive = Object.assign({}, fields, { processor: processor || expression });
     processor || directiveQueue.push(directive);
     return directive;
-})(), viewModuleResolver = (tagName, namespace) => {
-    asserter(`There is no valid module named "${ tagName }" found`, namespace);
-    let isVirtualElement = false, promise = namespace.promise;
-    if (namespace) {
-        promise = namespace.fetch(tagName, true, true);
-        if (promise) {
-            isVirtualElement = true;
-        } else {
-            return viewModuleResolver(tagName, namespace.parent);
-        }
-    }
-    return { promise, isVirtualElement };
-}, NodeProfile = class {
+})(), NodeProfile = class {
     constructor (node, namespace = rootNamespace, rootNodeProfiles = null, parent = null, unique = false, defaultSlotScope = null) {
         this.node = node, this.namespace = namespace, this.unique = unique, this.defaultSlotScope = defaultSlotScope || (parent || {}).defaultSlotScope || null, this.dynamic = this.plain = this.raw = this.virtual = false, this.text = this.inlineStyle = this.styles = this.directives = this.landmark = this.children = this.classNames = this.html = this.slotScope = null;
         const type = node.nodeType;
@@ -1051,7 +1029,9 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
                 }
                 rootNodeProfiles && node.removeAttribute(cloak);
             } else {
-                const controllers = [], eventHandlers = [], directives = { controllers, eventHandlers }, name = caseResolver(tagName.toLowerCase()), { promise = null, isVirtualElement = false } = (Object.is(node.constructor, HTMLUnknownElement) && viewModuleResolver(name, namespace)) || {}, dynamicDirective = '@directive', dynamic = attributes[dynamicDirective], slotDirective = '@slot';
+                const controllers = [], eventHandlers = [], directives = { controllers, eventHandlers }, name = caseResolver(tagName.toLowerCase()), moduleProfile = Object.is(node.constructor, HTMLUnknownElement) && namespace.fetchViewModule(name.split('.')[0]), convertToTemplate = moduleProfile && !Object.is(moduleProfile.state, 'resolved'), dynamicDirective = '@directive', dynamic = attributes[dynamicDirective], slotDirective = '@slot';
+                moduleProfile && asserter(`It is illegal to use "$html" or "$text" directive on view module "${ name }"`, !node.hasAttribute('$html') && !node.hasAttribute('$text'));
+                convertToTemplate && this.resolveDirective('$html', `"${ node.outerHTML.replace(/"/g, '\\"') }"`, directives);
                 if (node.hasAttribute(slotDirective)) {
                     const slotValue = node.getAttribute(slotDirective).trim(), slotName = `_$slot_${ slotValue }`;
                     directiveAttributeResolver(node, slotDirective, slotValue);
@@ -1064,7 +1044,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
                         this.resolveDirective('$html', slotName, directives);
                     }
                 }
-                if (isVirtualElement || Object.is(name, 'template')) {
+                if (moduleProfile || Object.is(name, 'template')) {
                     this.virtual = true;
                     this.resolveLandmark(node, 'virtual node removed');
                 }
@@ -1080,9 +1060,9 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
                 if (this.html) { return processorResolver(); }
                 this.plain = !(this.directives || this.landmark);
                 rootNodeProfiles && (this.plain ? (node.hasAttribute(cloak) && forEach(node.children, child => child.setAttribute(cloak, '')) || node.removeAttribute(cloak)) : (rootNodeProfiles.push(this) && (rootNodeProfiles = null)));
-                if (isVirtualElement) {
-                    asserter(`It is illegal to use "$html" or "$text" directive on view module "${ name }"`, !directives.child); // TODO
-                    this.promises.push(promise.then(moduleProfile => this.resolveViewModule(moduleProfile)))
+                if (moduleProfile) {
+                    if (!convertToTemplate) debugger
+                    convertToTemplate || this.resolveViewModule(moduleProfile);
                 } else if (!directives.child) {
                     this.resolveChildren(node, rootNodeProfiles);
                 }

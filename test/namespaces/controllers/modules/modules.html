@@ -42,7 +42,7 @@
       <button +click="console.log($module)">console.log($module)</button><br/>
       <button +click="alert(JSON.stringify(empty_data))">alert(JSON.stringify(empty_data))</button><br/>
       <button +click="processor()">processor()</button><br/>
-      <button +click="console.log($module), namespace_alias.script1.processor()">namespace.script1.processor()</button><br/>
+      <button +click="console.log($module), namespace.script1.processor()">namespace.script1.processor()</button><br/>
       <button +click="alert(namespace_embedded.json[1])">alert(namespace_embedded.json[1])</button><br/>
       <button +click="script0.inner2()">script0.inner2()</button><br/>
       <button +click="++index, html=`<inner_template1 +loading='{ index: 10, html: \`hello world\` }'></inner_template1>`;">++index</button><br/>

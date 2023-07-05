@@ -14,9 +14,8 @@
     "inner_template1": {
         "description": "seek for next uri when remote module missing",
         "uri": ["./innerTemplate1_not_exist.html", "#innerTemplate1"],
-        "style": ["style1", "style2", "namespace_alias.style"]
+        "style": ["style1", "style2", "namespace.style"]
     },
-    "template1_alias": "inner_template1",
     "inner_template2": ["./innerTemplate2_not_exist.html", "./template.html"],
     "inner_template3": {
         "content": "<inner_template1></inner_template1>",
@@ -25,10 +24,6 @@
     "namespace": {
         "explicit": true,
         "uri": "./namespace.html"
-    },
-    "namespace_alias": {
-        "explicit": true,
-        "uri": "namespace"
     },
     "namespace_embedded": {
         "explicit": true,
@@ -60,8 +55,5 @@
         "uri": ["#style1"],
         "scoped": false
     }],
-    "style2": "./style.css",
-    "style_alias": {
-        "uri": "style1"
-    }
+    "style2": "./style.css"
 }

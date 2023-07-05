@@ -28,7 +28,7 @@ return {
         constants: {
             title: 'default, should be overwritten'
         },
-        modules: ['root_style', 'test_script', 'script', 'component', 'prefix', 'suffix'],
+        modules: ['modules', 'root_style', 'test_script', 'script', 'component', 'prefix', 'suffix'],
         children: [{
             path: 'newpage',
             modules: 'newpage'
