@@ -11,16 +11,23 @@ versions.forEach(({ tag, path }) => (frameworks[tag] = readFileSync(`../src/dagg
 
 global.runner = (name, describe, it, dirName, callback, { contentPath = 'content.html', optionsPath = '', modulesPath = '', routersPath = '' } = {}) => describe(name, () => {
     const fullContentPath = resolve(dirName, contentPath), content = readFileSync(fullContentPath).toString().trim(), isEntireContent = content.startsWith('<html>') || content.startsWith('<!DOCTYPE ');
-    return versions.forEach(({ tag, desc, path }) => it(desc, () => browser.newPage().then(page => (isEntireContent ? writeFileSync(fullContentPath, content.replace('%VERSION%', path)) || page.goto(`http://localhost:6688/${ dirName.replace(__dirname, '').replace(/\\/g, '/') }/${ contentPath }`) : page.setContent(`${ htmlTemplateStart.replace('%OPTIONS%', optionsPath ? readFileSync(resolve(dirName, optionsPath)) : '{}').replace('%MODULES%', modulesPath ? readFileSync(resolve(dirName, modulesPath)) : '{}').replace('%ROUTERS%', routersPath ? readFileSync(resolve(dirName, routersPath)) : '{}') }${ frameworks[tag] }${ htmlTemplateEnd.replace('%CONTENT%', content) }`)) && page).then(page => {
+    return versions.forEach(({ tag, desc, path }) => it(desc, async () => {
+        const page = await browser.newPage();
+        if (isEntireContent) {
+            writeFileSync(fullContentPath, content.replace('%VERSION%', path));
+            await page.goto(`http://localhost:6688${ dirName.replace(__dirname, '').replace(/\\/g, '/') }/${ contentPath }`);
+        } else {
+            page.setContent(`${ htmlTemplateStart.replace('%OPTIONS%', optionsPath ? readFileSync(resolve(dirName, optionsPath)) : '{}').replace('%MODULES%', modulesPath ? readFileSync(resolve(dirName, modulesPath)) : '{}').replace('%ROUTERS%', routersPath ? readFileSync(resolve(dirName, routersPath)) : '{}') }${ frameworks[tag] }${ htmlTemplateEnd.replace('%CONTENT%', content) }`);
+        }
         pageExtend(page);
         let promises = callback(page.jQuery.bind(page), page);
         Array.isArray(promises) || (promises = [promises]);
-        return Promise.all(promises.map(promise => Object.is(typeof promise, 'function') ? promise() : promise)).then(() => page.close());
-    })));
+        return Promise.all(promises.map(promise => Object.is(typeof promise, 'function') ? promise() : promise)).then(() => page.close()).then(() => isEntireContent && writeFileSync(fullContentPath, content));
+    }));
 });
 
 module.exports = () => puppeteer.launch({
-    headless: false,
+    headless: true,
     /* args: [
         '–disable-gpu',
         '–disable-dev-shm-usage',

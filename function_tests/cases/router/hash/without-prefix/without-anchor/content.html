@@ -16,7 +16,7 @@
     <script
       type="module"
       crossorigin="anonymous"
-      src="http://localhost:8280/dagger.release.js"
+      src="http://localhost:8280/dagger%VERSION%.js"
       defer
     ></script>
     <script type="dagger/routers">
@@ -31,6 +31,8 @@
                     path: 'index1'
                 }, {
                     path: 'index2'
+                }, {
+                  path: 'default-router'
                 }]
             }
         }

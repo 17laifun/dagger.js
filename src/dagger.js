@@ -1320,6 +1320,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     const scenarios = {}, paths = Object.is(path, slash) ? [''] : path.split(slash), routers = [];
     if (!rootRouter.match(routers, scenarios, paths)) {
         if (Reflect.has(routerConfigs, 'default')) {
+            asserter(`The router "${ path }" is invalid`, !Object.is(`/${ routerConfigs.default }`, path));
             warner(`\u274e The router "${ path }" is invalid, redirect to the default router "${ routerConfigs.default }"`);
             const defaultPath = routerConfigs.default, resolvedPath = `${ query ? `${ defaultPath }?${ query }` : defaultPath }${ anchor }`;
             return history.pushState(null, '', resolvedPath);
