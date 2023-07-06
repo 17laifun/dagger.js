@@ -620,11 +620,11 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     exist: (data, _, nodeContext) => data ? (Object.is(nodeContext.state, 'unloaded') && nodeContext.loading()) : nodeContext.unloading(true),
     file: (data, node) => asserter([`The data bound to directive "$file" of element "%o" should be "File${ node.multiple ? ' array' : '' }" instead of "%o"`, node, data], !data || (node.multiple ? (Array.isArray(data) && data.every(file => (file instanceof File))) : (data instanceof File))),
     focus: (data, node, _, { decorators: { prevent = false } }) => data ? node.focus({ preventScroll: prevent }) : node.blur(),
-    html: (data, node, nodeContext, { decorators: { root = false } }) => {
+    html: (data, node, nodeContext, { decorators: { root = false, strict = false } }) => {
         data = textResolver(data);
         nodeContext.removeChildren(true);
         if (!data) { return; }
-        moduleNameRegExp.test(data) && (data = `<${ data }></${ data }>`);
+        !strict && moduleNameRegExp.test(data) && (data = `<${ data }></${ data }>`);
         const rootNodeProfiles = [], profile = nodeContext.profile, fragment = templateResolver(data);
         if (!node) {
             const tags = profile.node.$tags;
@@ -1011,8 +1011,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
 }, directiveResolver = ((baseSignature = '$module, $scope') => (expression, fields = {}, signature = '$node') => {
     const { clear, debug } = fields.decorators || {};
     expression = `${ signature ? `(${ baseSignature }, ${ signature })` : `(${ baseSignature })` } => { with ($module) with ($scope) return (() => { 'use strict';\n ${ debug ? 'debugger;\n\r' : '' }${ clear ? 'console.clear();\n\r' : '' }return ${ expression }; })(); }`;
-    const processor = processorCaches[expression];
-    const directive = Object.assign({}, fields, { processor: processor || expression });
+    const processor = processorCaches[expression], directive = Object.assign({}, fields, { processor: processor || expression });
     processor || directiveQueue.push(directive);
     return directive;
 })(), NodeProfile = class {
@@ -1042,7 +1041,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
             } else {
                 const controllers = [], eventHandlers = [], directives = { controllers, eventHandlers }, name = caseResolver(tagName.toLowerCase()), moduleProfile = Object.is(node.constructor, HTMLUnknownElement) && namespace.fetchViewModule(name.split('.')[0]), resolved = Object.is(moduleProfile.state, 'resolved'), dynamicDirective = '@directive', dynamic = attributes[dynamicDirective], slotDirective = '@slot';
                 moduleProfile && asserter(`It is illegal to use "$html" or "$text" directive on view module "${ name }"`, !node.hasAttribute('$html') && !node.hasAttribute('$text'));
-                !moduleProfile || resolved || this.resolveDirective('$html', `"${ node.outerHTML.replace(/"/g, '\\"') }"`, directives);
+                !moduleProfile || resolved || this.resolveDirective('$html', `\`${ node.outerHTML.replace(/`/g, '\\`') }\``, directives);
                 if (node.hasAttribute(slotDirective)) {
                     const slotValue = node.getAttribute(slotDirective).trim(), slotName = `_$slot_${ slotValue }`;
                     directiveAttributeResolver(node, slotDirective, slotValue);
@@ -1052,7 +1051,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
                         warner([`\u274e Please avoid adding "$html" or "$text" directive on element "%o" as it's declared "${ slotDirective }" meta directive already`, node], !node.hasAttribute('$html') && !node.hasAttribute('$text'));
                         node.removeAttribute('$html');
                         node.removeAttribute('$text');
-                        this.resolveDirective('$html', slotName, directives);
+                        this.resolveDirective('$html#strict', slotName, directives);
                     }
                 }
                 if (moduleProfile || Object.is(name, 'template')) {

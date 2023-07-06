@@ -8,7 +8,7 @@
     <link rel="icon" href="data:image/svg+xml,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3e%3ctext y=%22.9em%22 font-size=%2280%22%3e🗡️%3c/text%3e%3c/svg%3e">
     <!--<link rel="stylesheet" href="css.css" media="print" onload="media = 'all'">-->
     <style>[dg-cloak] { display: none !important; }</style>
-    <script type="module" crossorigin="anonymous" src="http://localhost:8280/dagger.release.js" defer></script>
+    <script type="module" crossorigin="anonymous" src="http://localhost:8280/dagger.js" defer></script>
     <script type="dagger/options" src="/options.json"></script>
     <script type="dagger/modules" src="/modules.json"></script>
     <script type="dagger/routers" src="/routers.js"></script>
@@ -27,11 +27,16 @@
         <div class="component">${ component }</div>
     </template>
     <template id="prefix">
-      <prefix $exist="Math.random() > 0.2"></prefix>
+      <prefix $exist="Math.random() > `0.2`">
+        <button @slot="1">c1</button>
+        <button @slot="2">c2</button>
+      </prefix>
       <div><template +loading="{ item: 0 }" @slot>hello ${ item }</template></div>
       <div class="prefix-raw">prefix</div>
       <div class="prefix-plain">prefix-${ item }</div>
       <div $class="`prefix-${ item }`">prefix-${ item }</div>
+      <template @slot="1">abcd</template>
+      <div @slot="2">default1</div>
       <modules.namespace.inner.inner_template321></modules.namespace.inner.inner_template321>
       <suffix $each="'string'" $exist="true" @directive="{ name: '$exist', value: `${ index > 2 }` }"></suffix>
     </template>

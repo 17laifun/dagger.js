@@ -507,11 +507,11 @@ export default ((context = Symbol('context'), currentController = null, directiv
     exist: (data, _, nodeContext) => data ? (Object.is(nodeContext.state, 'unloaded') && nodeContext.loading()) : nodeContext.unloading(true),
     file: () => {},
     focus: (data, node, _, { decorators: { prevent = false } }) => data ? node.focus({ preventScroll: prevent }) : node.blur(),
-    html: (data, node, nodeContext, { decorators: { root = false } }) => {
+    html: (data, node, nodeContext, { decorators: { root = false, strict = false } }) => {
         data = textResolver(data);
         nodeContext.removeChildren(true);
         if (!data) { return; }
-        moduleNameRegExp.test(data) && (data = `<${ data }></${ data }>`);
+        !strict && moduleNameRegExp.test(data) && (data = `<${ data }></${ data }>`);
         const rootNodeProfiles = [], profile = nodeContext.profile, fragment = templateResolver(data);
         if (!node) {
             const tags = profile.node.$tags;
@@ -886,8 +886,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
     return NodeContext;
 })(), NodeProfile = ((directiveType = { '$': 'controller', '+': 'event' }, interactiveDirectiveNames = hashTableResolver('checked', 'file', 'focus', 'result', 'selected', 'value'), lifeCycleDirectiveNames = hashTableResolver('loading', 'loaded', 'sentry', 'unloading', 'unloaded'), rawElementNames = hashTableResolver('STYLE', 'SCRIPT'), caseResolver = content => content.includes('__') ? content.replace(/__[a-z]/g, string => string[2].toUpperCase()) : content, dataBinder = (directives, value, fields, event) => directives.eventHandlers.push(directiveResolver(`Object.is(${ value }, _$data_) || (${ value } = _$data_)`, Object.assign({ event }, fields), '$node, _$data_')), directiveResolver = ((baseSignature = '$module, $scope') => (expression, fields = {}, signature = '$node') => {
     expression = `${ signature ? `(${ baseSignature }, ${ signature })` : `(${ baseSignature })` } => { with ($module) with ($scope) return (() => { 'use strict';\n return ${ expression }; })(); }`;
-    const processor = processorCaches[expression];
-    const directive = Object.assign({}, fields, { processor: processor || expression });
+    const processor = processorCaches[expression], directive = Object.assign({}, fields, { processor: processor || expression });
     processor || directiveQueue.push(directive);
     return directive;
 })(), NodeProfile = class {
@@ -913,7 +912,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
                 rootNodeProfiles && node.removeAttribute(cloak);
             } else {
                 const controllers = [], eventHandlers = [], directives = { controllers, eventHandlers }, name = caseResolver(tagName.toLowerCase()), moduleProfile = Object.is(node.constructor, HTMLUnknownElement) && namespace.fetchViewModule(name.split('.')[0]), resolved = Object.is(moduleProfile.state, 'resolved'), dynamicDirective = '@directive', dynamic = attributes[dynamicDirective], slotDirective = '@slot';
-                !moduleProfile || resolved || this.resolveDirective('$html', `"${ node.outerHTML.replace(/"/g, '\\"') }"`, directives);
+                !moduleProfile || resolved || this.resolveDirective('$html', `\`${ node.outerHTML.replace(/`/g, '\\`') }\``, directives);
                 if (node.hasAttribute(slotDirective)) {
                     const slotValue = node.getAttribute(slotDirective).trim(), slotName = `_$slot_${ slotValue }`;
                     node.removeAttribute(slotDirective);
@@ -921,7 +920,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
                         this.defaultSlotScope[slotName] = node.innerHTML;
                         node.removeAttribute('$html');
                         node.removeAttribute('$text');
-                        this.resolveDirective('$html', slotName, directives);
+                        this.resolveDirective('$html#strict', slotName, directives);
                     }
                 }
                 if (moduleProfile || Object.is(name, 'template')) {
