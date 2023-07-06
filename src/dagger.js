@@ -281,10 +281,21 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         this.config = config, this.promise = new Promise(resolver => (this.resolver = resolver)), this.base = new URL(config.base || base, (parent || {}).base || document.baseURI).href;
         config.prefetch && this.resolve();
     }
+    fetch (paths) {
+        if (!paths.length) { return this; }
+        const path = paths.shift(), moduleProfile = this.fetchChild(path);
+        return moduleProfile.fetch(paths);
+    }
+    fetchChild (name, ignoreMismatch = false) {
+        const childModuleProfile = (this.children || []).find(child => Object.is(child.name, name) && child.valid);
+        if (!childModuleProfile && ignoreMismatch) { return; }
+        asserter(`${ this.space }Failed to fetch module "${ name }" within ${ this.path ? `namespace "${ this.path }"` : 'the root namespace' }`, !Object.is(childModuleProfile));
+        return childModuleProfile;
+    }
     fetchViewModule (name) {
-        const moduleProfile = (this.children || []).find(child => Object.is(child.name, name) && child.valid);
-        moduleProfile && asserter(`The module "${ moduleProfile.path }" is referenced but not declared in the "modules" field of the current router`, !Object.is(moduleProfile.state, 'unresolved'));
+        const moduleProfile = this.fetchChild(name, true);
         if (moduleProfile) {
+            asserter(`The module "${ moduleProfile.path }" is referenced but not declared in the "modules" field of the current router`, !Object.is(moduleProfile.state, 'unresolved'));
             return moduleProfile;
         } else {
             asserter(`There is no valid module named "${ name }" found`, this.parent);
@@ -995,7 +1006,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         }
     })();
     return NodeContext;
-})(), NodeProfile = ((directiveType = { '$': 'controller', '+': 'event' }, interactiveDirectiveNames = hashTableResolver('checked', 'file', 'focus', 'result', 'selected', 'value'), lifeCycleDirectiveNames = hashTableResolver('loading', 'loaded', 'sentry', 'unloading', 'unloaded'), rawElementNames = hashTableResolver('STYLE', 'SCRIPT'), caseResolver = content => content.includes('__') ? content.replace(/__[a-z]/g, string => string[2].toUpperCase()) : content, viewModuleCacheMap = new WeakMap, dataBinder = (directives, value, fields, event) => directives.eventHandlers.push(directiveResolver(`Object.is(${ value }, _$data_) || (${ value } = _$data_)`, Object.assign({ event }, fields), '$node, _$data_')), directiveAttributeResolver = (node, name, value = '') => {
+})(), NodeProfile = ((directiveType = { '$': 'controller', '+': 'event' }, interactiveDirectiveNames = hashTableResolver('checked', 'file', 'focus', 'result', 'selected', 'value'), lifeCycleDirectiveNames = hashTableResolver('loading', 'loaded', 'sentry', 'unloading', 'unloaded'), rawElementNames = hashTableResolver('STYLE', 'SCRIPT'), caseResolver = content => content.includes('__') ? content.replace(/__[a-z]/g, string => string[2].toUpperCase()) : content, dataBinder = (directives, value, fields, event) => directives.eventHandlers.push(directiveResolver(`Object.is(${ value }, _$data_) || (${ value } = _$data_)`, Object.assign({ event }, fields), '$node, _$data_')), directiveAttributeResolver = (node, name, value = '') => {
     daggerOptions.debugDirective && node.setAttribute(`${ directiveType[name[0]] || 'meta' }-${ decodeURIComponent(name.substring(1)).trim().replace(/\#/g, '__').replace(/:/g, '_').replace(/[^\w]/g, '-') }-debug`, value);
 }, directiveResolver = ((baseSignature = '$module, $scope') => (expression, fields = {}, signature = '$node') => {
     const { clear, debug } = fields.decorators || {};
@@ -1029,9 +1040,9 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
                 }
                 rootNodeProfiles && node.removeAttribute(cloak);
             } else {
-                const controllers = [], eventHandlers = [], directives = { controllers, eventHandlers }, name = caseResolver(tagName.toLowerCase()), moduleProfile = Object.is(node.constructor, HTMLUnknownElement) && namespace.fetchViewModule(name.split('.')[0]), convertToTemplate = moduleProfile && !Object.is(moduleProfile.state, 'resolved'), dynamicDirective = '@directive', dynamic = attributes[dynamicDirective], slotDirective = '@slot';
+                const controllers = [], eventHandlers = [], directives = { controllers, eventHandlers }, name = caseResolver(tagName.toLowerCase()), moduleProfile = Object.is(node.constructor, HTMLUnknownElement) && namespace.fetchViewModule(name.split('.')[0]), resolved = Object.is(moduleProfile.state, 'resolved'), dynamicDirective = '@directive', dynamic = attributes[dynamicDirective], slotDirective = '@slot';
                 moduleProfile && asserter(`It is illegal to use "$html" or "$text" directive on view module "${ name }"`, !node.hasAttribute('$html') && !node.hasAttribute('$text'));
-                convertToTemplate && this.resolveDirective('$html', `"${ node.outerHTML.replace(/"/g, '\\"') }"`, directives);
+                !moduleProfile || resolved || this.resolveDirective('$html', `"${ node.outerHTML.replace(/"/g, '\\"') }"`, directives);
                 if (node.hasAttribute(slotDirective)) {
                     const slotValue = node.getAttribute(slotDirective).trim(), slotName = `_$slot_${ slotValue }`;
                     directiveAttributeResolver(node, slotDirective, slotValue);
@@ -1061,8 +1072,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
                 this.plain = !(this.directives || this.landmark);
                 rootNodeProfiles && (this.plain ? (node.hasAttribute(cloak) && forEach(node.children, child => child.setAttribute(cloak, '')) || node.removeAttribute(cloak)) : (rootNodeProfiles.push(this) && (rootNodeProfiles = null)));
                 if (moduleProfile) {
-                    if (!convertToTemplate) debugger
-                    convertToTemplate || this.resolveViewModule(moduleProfile);
+                    resolved && this.resolveViewModule(moduleProfile.fetch(name.split('.').slice(1)));
                 } else if (!directives.child) {
                     this.resolveChildren(node, rootNodeProfiles);
                 }
@@ -1179,18 +1189,10 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         return this.landmark;
     }
     resolveViewModule (moduleProfile) {
-        const module = moduleProfile.module;
-        let cachedFields = viewModuleCacheMap.get(module);
-        if (!cachedFields) {
-            cachedFields = emptier();
-            const isViewModule = module instanceof NodeProfile, view = isViewModule ? module : ((moduleProfile.children || []).find(moduleProfile => Object.is(moduleProfile.name, 'view')) || {}).module;
-            asserter(`"${ moduleProfile.path }" or "${ moduleProfile.path }.view" is not a valid view module`, view instanceof NodeProfile);
-            cachedFields.children = view.children;
-            cachedFields.defaultSlotScope = view.defaultSlotScope;
-            originalWeakMapSet.call(viewModuleCacheMap, module, cachedFields);
-            isViewModule || originalWeakMapSet.call(viewModuleCacheMap, view, cachedFields);
-        }
-        Object.assign(this, cachedFields);
+        const module = moduleProfile.module, isViewModule = module instanceof NodeProfile, view = isViewModule ? module : moduleProfile.fetchChild('view').module;
+        asserter(`"${ moduleProfile.path }" or "${ moduleProfile.path }.view" is not a valid view module`, view instanceof NodeProfile);
+        this.children = view.children;
+        this.defaultSlotScope = view.defaultSlotScope;
         if (Object.keys(this.defaultSlotScope).length) {
             const slotScope = {}, emptySlot = '_$slot_', slotDirective = '@slot';
             forEach(this.node.children, container => {
@@ -1204,7 +1206,6 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
             Reflect.has(this.defaultSlotScope, emptySlot) && !Reflect.has(slotScope, emptySlot) && this.node.innerHTML && (slotScope[emptySlot] = this.node.innerHTML);
             this.slotScope = Object.assign({}, this.defaultSlotScope, slotScope);
         }
-        return '';
     }
 }) => NodeProfile)(), Topology = class {
     constructor (parent, name, value) {

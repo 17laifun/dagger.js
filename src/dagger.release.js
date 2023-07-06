@@ -212,7 +212,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
 }, ModuleProfile = class {
     constructor (config = {}, base = '', name = '', parent = null) {
         name = name.trim();
-        this.name = name, this.state = 'unresolved', this.childrenCache = emptier(), this.valid = true, this.module = this.integrity = this.parent = this.children = this.type = this.content = this.resolvedContent = null;
+        this.name = name, this.state = 'unresolved', this.valid = true, this.module = this.integrity = this.parent = this.children = this.type = this.content = this.resolvedContent = null;
         if (parent) {
             this.parent = parent, this.path = parent.path ? `${ parent.path }.${ name }` : name, this.tags = [...parent.tags, this.path.replace(/\./g, '__')], this.baseElement = parent.baseElement;
         } else {
@@ -229,11 +229,16 @@ export default ((context = Symbol('context'), currentController = null, directiv
         this.config = config, this.promise = new Promise(resolver => (this.resolver = resolver)), this.base = new URL(config.base || base, (parent || {}).base || document.baseURI).href;
         config.prefetch && this.resolve();
     }
-    fetch (paths, asynchronous = false) {
-        Array.isArray(paths) || (paths = paths.split('.'));
+    fetch (paths) {
         if (!paths.length) { return this; }
-        const path = paths.shift().trim(), moduleProfile = this.childrenCache[path] || (this.childrenCache[path] = (this.children || []).find(child => Object.is(child.name, path) && child.valid));
-        return moduleProfile && (asynchronous ? moduleProfile.resolve().then(moduleProfile => moduleProfile.valid && moduleProfile.fetch(paths)) : (moduleProfile.valid && moduleProfile.fetch(paths)));
+        const path = paths.shift(), moduleProfile = this.fetchChild(path);
+        return moduleProfile.fetch(paths);
+    }
+    fetchChild (name) {
+        return (this.children || []).find(child => Object.is(child.name, name) && child.valid);
+    }
+    fetchViewModule (name) {
+        return this.fetchChild(name) || this.parent.fetchChild(name);
     }
     resolve (childNameSet = null) {
         const type = this.type;
@@ -879,20 +884,13 @@ export default ((context = Symbol('context'), currentController = null, directiv
         }
     })();
     return NodeContext;
-})(), NodeProfile = ((directiveType = { '$': 'controller', '+': 'event' }, interactiveDirectiveNames = hashTableResolver('checked', 'file', 'focus', 'result', 'selected', 'value'), lifeCycleDirectiveNames = hashTableResolver('loading', 'loaded', 'sentry', 'unloading', 'unloaded'), rawElementNames = hashTableResolver('STYLE', 'SCRIPT'), caseResolver = content => content.includes('__') ? content.replace(/__[a-z]/g, string => string[2].toUpperCase()) : content, viewModuleCacheMap = new WeakMap, dataBinder = (directives, value, fields, event) => directives.eventHandlers.push(directiveResolver(`Object.is(${ value }, _$data_) || (${ value } = _$data_)`, Object.assign({ event }, fields), '$node, _$data_')), directiveResolver = ((baseSignature = '$module, $scope') => (expression, fields = {}, signature = '$node') => {
+})(), NodeProfile = ((directiveType = { '$': 'controller', '+': 'event' }, interactiveDirectiveNames = hashTableResolver('checked', 'file', 'focus', 'result', 'selected', 'value'), lifeCycleDirectiveNames = hashTableResolver('loading', 'loaded', 'sentry', 'unloading', 'unloaded'), rawElementNames = hashTableResolver('STYLE', 'SCRIPT'), caseResolver = content => content.includes('__') ? content.replace(/__[a-z]/g, string => string[2].toUpperCase()) : content, dataBinder = (directives, value, fields, event) => directives.eventHandlers.push(directiveResolver(`Object.is(${ value }, _$data_) || (${ value } = _$data_)`, Object.assign({ event }, fields), '$node, _$data_')), directiveResolver = ((baseSignature = '$module, $scope') => (expression, fields = {}, signature = '$node') => {
     expression = `${ signature ? `(${ baseSignature }, ${ signature })` : `(${ baseSignature })` } => { with ($module) with ($scope) return (() => { 'use strict';\n return ${ expression }; })(); }`;
     const processor = processorCaches[expression];
     const directive = Object.assign({}, fields, { processor: processor || expression });
     processor || directiveQueue.push(directive);
     return directive;
-})(), viewModuleResolver = (tagName, namespace) => {
-    let isVirtualElement = false, promise = namespace.promise;
-    if (namespace) {
-        promise = namespace.fetch(tagName, true);
-        if (promise) { isVirtualElement = true; } else { return viewModuleResolver(tagName, namespace.parent); }
-    }
-    return { promise, isVirtualElement };
-}, NodeProfile = class {
+})(), NodeProfile = class {
     constructor (node, namespace = rootNamespace, rootNodeProfiles = null, parent = null, unique = false, defaultSlotScope = null) {
         this.node = node, this.namespace = namespace, this.unique = unique, this.defaultSlotScope = defaultSlotScope || (parent || {}).defaultSlotScope || null, this.dynamic = this.plain = this.raw = this.virtual = false, this.text = this.inlineStyle = this.styles = this.directives = this.landmark = this.children = this.classNames = this.html = this.slotScope = null;
         const type = node.nodeType;
@@ -914,7 +912,8 @@ export default ((context = Symbol('context'), currentController = null, directiv
                 raw && node.removeAttribute(rawDirective);
                 rootNodeProfiles && node.removeAttribute(cloak);
             } else {
-                const controllers = [], eventHandlers = [], directives = { controllers, eventHandlers }, name = caseResolver(tagName.toLowerCase()), { promise = null, isVirtualElement = false } = (Object.is(node.constructor, HTMLUnknownElement) && viewModuleResolver(name, namespace)) || {}, dynamicDirective = '@directive', dynamic = attributes[dynamicDirective], slotDirective = '@slot';
+                const controllers = [], eventHandlers = [], directives = { controllers, eventHandlers }, name = caseResolver(tagName.toLowerCase()), moduleProfile = Object.is(node.constructor, HTMLUnknownElement) && namespace.fetchViewModule(name.split('.')[0]), resolved = Object.is(moduleProfile.state, 'resolved'), dynamicDirective = '@directive', dynamic = attributes[dynamicDirective], slotDirective = '@slot';
+                !moduleProfile || resolved || this.resolveDirective('$html', `"${ node.outerHTML.replace(/"/g, '\\"') }"`, directives);
                 if (node.hasAttribute(slotDirective)) {
                     const slotValue = node.getAttribute(slotDirective).trim(), slotName = `_$slot_${ slotValue }`;
                     node.removeAttribute(slotDirective);
@@ -925,7 +924,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
                         this.resolveDirective('$html', slotName, directives);
                     }
                 }
-                if (isVirtualElement || Object.is(name, 'template')) {
+                if (moduleProfile || Object.is(name, 'template')) {
                     this.virtual = true;
                     this.resolveLandmark(node);
                 }
@@ -941,8 +940,8 @@ export default ((context = Symbol('context'), currentController = null, directiv
                 if (this.html) { return processorResolver(); }
                 this.plain = !(this.directives || this.landmark);
                 rootNodeProfiles && (this.plain ? (node.hasAttribute(cloak) && forEach(node.children, child => child.setAttribute(cloak, '')) || node.removeAttribute(cloak)) : (rootNodeProfiles.push(this) && (rootNodeProfiles = null)));
-                if (isVirtualElement) {
-                    this.promises.push(promise.then(moduleProfile => this.resolveViewModule(moduleProfile)))
+                if (moduleProfile) {
+                    resolved && this.resolveViewModule(moduleProfile.fetch(name.split('.').slice(1)));
                 } else if (!directives.child) {
                     this.resolveChildren(node, rootNodeProfiles);
                 }
@@ -1050,17 +1049,9 @@ export default ((context = Symbol('context'), currentController = null, directiv
         return this.landmark;
     }
     resolveViewModule (moduleProfile) {
-        const module = moduleProfile.module;
-        let cachedFields = viewModuleCacheMap.get(module);
-        if (!cachedFields) {
-            cachedFields = emptier();
-            const isViewModule = module instanceof NodeProfile, view = isViewModule ? module : ((moduleProfile.children || []).find(moduleProfile => Object.is(moduleProfile.name, 'view')) || {}).module;
-            cachedFields.children = view.children;
-            cachedFields.defaultSlotScope = view.defaultSlotScope;
-            originalWeakMapSet.call(viewModuleCacheMap, module, cachedFields);
-            isViewModule || originalWeakMapSet.call(viewModuleCacheMap, view, cachedFields);
-        }
-        Object.assign(this, cachedFields);
+        const module = moduleProfile.module, isViewModule = module instanceof NodeProfile, view = isViewModule ? module : moduleProfile.fetchChild('view').module;
+        this.children = view.children;
+        this.defaultSlotScope = view.defaultSlotScope;
         if (Object.keys(this.defaultSlotScope).length) {
             const slotScope = {}, emptySlot = '_$slot_', slotDirective = '@slot';
             forEach(this.node.children, container => {
@@ -1073,7 +1064,6 @@ export default ((context = Symbol('context'), currentController = null, directiv
             Reflect.has(this.defaultSlotScope, emptySlot) && !Reflect.has(slotScope, emptySlot) && this.node.innerHTML && (slotScope[emptySlot] = this.node.innerHTML);
             this.slotScope = Object.assign({}, this.defaultSlotScope, slotScope);
         }
-        return '';
     }
 }) => NodeProfile)(), Topology = class {
     constructor (parent, name, value) {
