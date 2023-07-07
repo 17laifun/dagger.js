@@ -27,16 +27,12 @@
         <div class="component">${ component }</div>
     </template>
     <template id="prefix">
-      <prefix $exist="Math.random() > `0.2`">
-        <button @slot="1">c1</button>
-        <button @slot="2">c2</button>
-      </prefix>
-      <div><template +loading="{ item: 0 }" @slot>hello ${ item }</template></div>
+      <button @slot="1">c1</button>
+      <button @slot="2">c2</button>
+      <div class="ssss"><template +loading="{ item: 0 }" @slot>hello ${ item }</template></div>
       <div class="prefix-raw">prefix</div>
       <div class="prefix-plain">prefix-${ item }</div>
       <div $class="`prefix-${ item }`">prefix-${ item }</div>
-      <template @slot="1">abcd</template>
-      <div @slot="2">default1</div>
       <modules.namespace.inner.inner_template321></modules.namespace.inner.inner_template321>
       <suffix $each="'string'" $exist="true" @directive="{ name: '$exist', value: `${ index > 2 }` }"></suffix>
     </template>
@@ -63,7 +59,7 @@
         div {
           -webkit-background-clip: content-box;
           background-clip: text;
-          border: 1px solid red;
+          border: 1px solid #00ffff;
         }
     </style>
     <style>
@@ -74,9 +70,13 @@
     </style>
   </head>
   <body dg-cloak +click="console.log('body click bubble', $event.currentTarget)" +click#capture="console.log('body click capture', $event.currentTarget)">
+    <div id="234">
     <prefix +loading="{ html: '<button>click</button>'}">
-      <template @slot="1">${ item }</template>
+      <!--<template @slot="1">${ item }</template>-->
+      <template @slot="1">abcd</template>
+      <div @slot="2">default1</div>
     </prefix>
+  </div>
     <div $exist="$router.path.includes('newpage')" $html="'newpage'"></div>
     <button +click="history.pushState({}, '', 'newpage')">click</button>
     <a href="newpage">newpage</a>
