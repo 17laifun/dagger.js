@@ -912,32 +912,36 @@ export default ((context = Symbol('context'), currentController = null, directiv
                 rootNodeProfiles && node.removeAttribute(cloak);
             } else {
                 const controllers = [], eventHandlers = [], directives = { controllers, eventHandlers }, name = caseResolver(tagName.toLowerCase()), moduleProfile = Object.is(node.constructor, HTMLUnknownElement) && namespace.fetchViewModule(name.split('.')[0]), resolved = Object.is(moduleProfile.state, 'resolved'), dynamicDirective = '@directive', dynamic = attributes[dynamicDirective], slotDirective = '@slot';
-                !moduleProfile || resolved || this.resolveDirective('$html', `\`${ node.outerHTML.replace(/`/g, '\\`') }\``, directives);
-                if (node.hasAttribute(slotDirective)) {
-                    const slotValue = node.getAttribute(slotDirective).trim(), slotName = `_$slot_${ slotValue }`;
-                    node.removeAttribute(slotDirective);
-                    if (this.defaultSlotScope) {
-                        this.defaultSlotScope[slotName] = node.innerHTML;
-                        node.removeAttribute('$html');
-                        node.removeAttribute('$text');
-                        this.resolveDirective('$html#strict', slotName, directives);
-                    }
-                }
-                if (moduleProfile || Object.is(name, 'template')) {
-                    this.virtual = true;
-                    this.resolveLandmark(node);
-                }
-                forEach([...attributes], ({ name, value }) => this.resolveDirective(name, value, directives));
-                if (dynamic) {
-                    this.directives = directives, this.dynamic = directiveResolver(dynamic.value);
-                    node.removeAttribute(dynamicDirective);
+                if (moduleProfile && !resolved) {
+                    this.resolveDirective('$html', `\`${ node.outerHTML.replace(/`/g, '\\`') }\``, directives);
+                    this.directives = directives;
                 } else {
-                    controllers.length || (directives.controllers = null);
-                    eventHandlers.length || (directives.eventHandlers = null);
-                    (directives.controllers || directives.eventHandlers || (Object.values(directives).length > 2)) && (this.directives = directives);
+                    if (node.hasAttribute(slotDirective)) {
+                        const slotValue = node.getAttribute(slotDirective).trim(), slotName = `_$slot_${ slotValue }`;
+                        node.removeAttribute(slotDirective);
+                        if (this.defaultSlotScope) {
+                            this.defaultSlotScope[slotName] = node.innerHTML;
+                            node.removeAttribute('$html');
+                            node.removeAttribute('$text');
+                            this.resolveDirective('$html#strict', slotName, directives);
+                        }
+                    }
+                    if (moduleProfile || Object.is(name, 'template')) {
+                        this.virtual = true;
+                        this.resolveLandmark(node);
+                    }
+                    forEach([...attributes], ({ name, value }) => this.resolveDirective(name, value, directives));
+                    if (dynamic) {
+                        this.directives = directives, this.dynamic = directiveResolver(dynamic.value);
+                        node.removeAttribute(dynamicDirective);
+                    } else {
+                        controllers.length || (directives.controllers = null);
+                        eventHandlers.length || (directives.eventHandlers = null);
+                        (directives.controllers || directives.eventHandlers || (Object.values(directives).length > 2)) && (this.directives = directives);
+                    }
+                    if (this.html) { return processorResolver(); }
+                    this.plain = !(this.directives || this.landmark);
                 }
-                if (this.html) { return processorResolver(); }
-                this.plain = !(this.directives || this.landmark);
                 rootNodeProfiles && (this.plain ? (node.hasAttribute(cloak) && forEach(node.children, child => child.setAttribute(cloak, '')) || node.removeAttribute(cloak)) : (rootNodeProfiles.push(this) && (rootNodeProfiles = null)));
                 if (moduleProfile) {
                     resolved && this.resolveViewModule(moduleProfile.fetch(name.split('.').slice(1)));
