@@ -1115,7 +1115,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
         }
         forEach(ownKeys(this.children), key => this.children[key].update((newValue || emptier())[key], dispatchSource.mutation));
     }
-}) => styleResolver('[dg-cloak] { display: none !important; }', 'dg-global-style', false) && document.addEventListener('DOMContentLoaded', () => Promise.all(['options', 'modules', 'routers'].map(type => configResolver(document, document.baseURI, type))).then(((base = '', currentStyleSet = null, originalPushState = history.pushState, originalReplaceState = history.replaceState, rootRouter = null, routerConfigs = null, styleModules = { '': styleModuleSet }, anchorResolver = (anchor, event = null) => {
+}) => styleResolver('[dg-cloak] { display: none !important; }', 'dg-global-style', false) && document.addEventListener('DOMContentLoaded', () => Promise.all(['options', 'modules', 'routers'].map(type => configResolver(document, document.baseURI, type))).then(((base = '', originalPushState = history.pushState, originalReplaceState = history.replaceState, rootRouter = null, routerConfigs = null, styleModuleCache = { '': styleModuleSet }, anchorResolver = (anchor, event = null) => {
     try {
         const anchorElement = document.getElementById(anchor) || querySelector(document, `a[name=${ anchor }]`);
         if(!anchorElement) { return; }
@@ -1128,20 +1128,20 @@ export default ((context = Symbol('context'), currentController = null, directiv
     }
 }, routingChangeResolver = ((routerChangeResolver = ((resolver = nextRouter => {
     processorResolver();
+    const currentStyleModuleSet = rootScope.$router && styleModuleCache[rootScope.$router.path];
     rootScope.$router = nextRouter;
-    if (!currentStyleSet) {
+    if (!routerTopology) {
         rootNodeProfiles.map(nodeProfile => new NodeContext(nodeProfile));
         routerTopology = [...rootScope.$router[meta]][0];
     }
-    if (!Object.is(currentStyleSet, styleModuleSet)) {
-        currentStyleSet && currentStyleSet.forEach(style => (style.disabled = !styleModuleSet.has(style)));
+    if (!Object.is(currentStyleModuleSet, styleModuleSet)) {
+        currentStyleModuleSet && currentStyleModuleSet.forEach(style => (style.disabled = !styleModuleSet.has(style)));
         styleModuleSet.forEach(style => (style.disabled = false));
-        currentStyleSet = styleModuleSet;
     }
     anchorResolver(nextRouter.anchor);
 }) => nextRouter => {
     const path = nextRouter.path;
-    styleModuleSet = styleModules[path] || (styleModules[path] = new Set);
+    styleModuleSet = styleModuleCache[path] || (styleModuleCache[path] = new Set);
     return rootNamespace.resolve(nextRouter.modules).then(() => resolver(nextRouter));
 })()) => () => {
     const slash = '/', anchorIndex = location.hash.lastIndexOf('#@'), anchor = (anchorIndex >= 0) ? location.hash.substring(anchorIndex + 2) : '';
@@ -1221,9 +1221,12 @@ export default ((context = Symbol('context'), currentController = null, directiv
         Reflect.defineProperty(prototype, name, { get: () => resolvedMethod });
     }) => (target, names) => forEach(names, name => resolver(target.prototype, name)))();
     eventDelegator('click', window, event => {
-        const node = event.target;
-        if (!['A', 'AREA'].includes(node.tagName) || !node.hasAttribute('href')) { return; }
-        const href = node.getAttribute('href').trim();
+        let target = event.target;
+        while (target && !['A', 'AREA'].includes(target.tagName)) {
+            target = target.parentNode;
+        }
+        if (!target || !target.hasAttribute('href')) { return; }
+        const href = target.getAttribute('href').trim();
         if (href.startsWith('#') && anchorResolver(href.substring(1), event)) { return; }
         if (href && !['.', '/', 'http:', 'https:'].some(prefix => href.startsWith(prefix))) {
             event.preventDefault();
@@ -1241,7 +1244,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
     const stateResolver = (method, parameters) => {
         const url = (parameters || [])[2], prefix = routerConfigs.prefix;
         url && !url.startsWith(prefix) && (parameters[2] = `${ prefix }${ url }`);
-        originalPushState.apply(history, parameters);
+        method.apply(history, parameters);
         routingChangeResolver();
     };
     history.pushState = (...parameters) => stateResolver(originalPushState, parameters);
