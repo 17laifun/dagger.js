@@ -912,8 +912,12 @@ export default ((context = Symbol('context'), currentController = null, directiv
                 rootNodeProfiles && node.removeAttribute(cloak);
             } else {
                 const controllers = [], eventHandlers = [], directives = { controllers, eventHandlers }, name = caseResolver(tagName.toLowerCase()), moduleProfile = Object.is(node.constructor, HTMLUnknownElement) && namespace.fetchViewModule(name.split('.')[0]), resolved = Object.is(moduleProfile.state, 'resolved'), dynamicDirective = '@directive', dynamic = attributes[dynamicDirective], slotDirective = '@slot';
+                if (moduleProfile || Object.is(name, 'template')) {
+                    this.virtual = true;
+                    this.resolveLandmark(node);
+                }
                 if (moduleProfile && !resolved) {
-                    this.resolveDirective('$html', `\`${ node.outerHTML.replace(/`/g, '\\`') }\``, directives);
+                    this.resolveDirective('$html', `\`${ node.outerHTML.replace(/`/g, '\\`').replace(/\${/g, '\\${') }\``, directives);
                     this.directives = directives;
                 } else {
                     if (node.hasAttribute(slotDirective)) {
@@ -925,10 +929,6 @@ export default ((context = Symbol('context'), currentController = null, directiv
                             node.removeAttribute('$text');
                             this.resolveDirective('$html#strict', slotName, directives);
                         }
-                    }
-                    if (moduleProfile || Object.is(name, 'template')) {
-                        this.virtual = true;
-                        this.resolveLandmark(node);
                     }
                     forEach([...attributes], ({ name, value }) => this.resolveDirective(name, value, directives));
                     if (dynamic) {
