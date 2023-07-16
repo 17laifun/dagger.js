@@ -246,6 +246,13 @@ export default ((context = Symbol('context'), currentController = null, directiv
             if (childNameSet) { // rootNamespace
                 this.promise = new Promise(resolver => (this.resolver = resolver));
             } else {
+                if (this.valid && Object.is(this.state, 'resolved')) {
+                    if (Object.is(type, moduleType.style)) {
+                        this.resolveModule(this.resolvedContent);
+                    } else if (Object.is(type, moduleType.namespace)) {
+                        forEach(this.children, child => child.resolve());
+                    }
+                }
                 return this.promise;
             }
         }
@@ -320,13 +327,13 @@ export default ((context = Symbol('context'), currentController = null, directiv
     resolveModule (resolvedContent) {
         this.resolvedContent = resolvedContent;
         let module = resolvedContent;
-        const type = this.type, isNamespace = Object.is(type, moduleType.namespace);
+        const type = this.type, isNamespace = Object.is(type, moduleType.namespace), isView = Object.is(type, moduleType.view);
         if (isNamespace) {
             module = emptier();
             this.children || (this.children = resolvedContent);
             forEach(resolvedContent, moduleProfile => childModuleResolver(module, moduleProfile));
             this.parent && this.parent.resolve().then(moduleProfile => Object.setPrototypeOf(module, moduleProfile.module));
-        } else if (Object.is(type, moduleType.view)) {
+        } else if (isView) {
             selectorInjector(module.node, this.parent.tags);
         } else if (Object.is(type, moduleType.script)) {
             module = scriptModuleResolver(module, emptier());
@@ -1178,7 +1185,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
 })(), Router = class {
     constructor (router, parent = null) {
         const { children, constants = {}, variables = {}, modules = [], tailable = false, match = '' } = router;
-        let path = router.path;
+        let path = (router.path || '').trim();
         this.modules = arrayWrapper(modules);
         if (parent) {
             (!path || Object.is(path, '*')) && (path = '.+');
@@ -1192,7 +1199,6 @@ export default ((context = Symbol('context'), currentController = null, directiv
             return;
         }
         this.constants = constants, this.variables = variables, this.children = null, this.parent = parent, this.scenarios = (path instanceof Object) ? Object.keys(path).map(scenario => ({ scenario, regExp: new RegExp(path[scenario] || '^$') })) : [{ scenario: path, regExp: new RegExp(`^${ path }$`) }];
-        forEach(this.modules, module => module.trim());
         children && (this.children = children.map(child => new Router(child, this)).filter(child => !child.invalid));
         this.tailable = tailable || !(this.children || []).length;
     }
