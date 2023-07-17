@@ -9,7 +9,7 @@
  *  </copyright>
  *  ***********************************************************************/
 
-export default ((context = Symbol('context'), currentController = null, directiveQueue = [], dispatchSource = { bubble: 'bubble', self: 'self', mutation: 'mutation' }, moduleNameRegExp = /^[a-z]{1}[\w]*$/, rootNamespace = null, rootScope = null, rootScopeCallback = null, rootNodeProfiles = [], arrayWrapper = target => Array.isArray(target) ? target : [target], emptier = () => Object.create(null), processorCaches = emptier(), styleModuleSet = new Set, eventDelegator = ((bubbleSet = new Set, captureSet = new Set, handler = (event, capture, targets, index = 0) => {
+export default ((context = Symbol('context'), currentController = null, directiveQueue = [], dispatchSource = { bubble: 'bubble', self: 'self', mutation: 'mutation' }, moduleNameRegExp = /^[a-z]{1}[\w]*$/, remoteUrlRegExp = /^(http:\/\/|https:\/\/|\/|\.\/|\.\.\/)/i, rootNamespace = null, rootScope = null, rootScopeCallback = null, rootNodeProfiles = [], arrayWrapper = target => Array.isArray(target) ? target : [target], emptier = () => Object.create(null), processorCaches = emptier(), styleModuleSet = new Set, eventDelegator = ((bubbleSet = new Set, captureSet = new Set, handler = (event, capture, targets, index = 0) => {
     const currentTarget = targets[index++];
     if (!currentTarget) { return; }
     const eventListenerSet = currentTarget.$eventListenerMap && currentTarget.$eventListenerMap[event.type], eventListeners = eventListenerSet ? [...eventListenerSet].filter(listener => Object.is(listener.decorators.capture, capture)) : [];
@@ -177,7 +177,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
     }
     isRootScope ? data[meta].add(new Topology(null, '', data)) : (target[property] = data);
     return data;
-})(), ModuleProfile = ((elementProfileCacheMap = new Map, embeddedType = { json: 'dagger/json', namespace: 'dagger/modules', script: 'dagger/script', style: 'dagger/style', string: 'dagger/string' }, integrityProfileCache = emptier(), mimeType = { html: 'text/html', json: 'application/json', script: ['application/javascript', 'javascript/esm', 'text/javascript'], style: 'text/css' }, relativePathRegExp = /(?:^|;|\s+)(?:export|import)\s*?(?:(?:(?:[$\w*\s{},]*)\s*from\s*?)|)(?:(?:"([^"]+)?")|(?:'([^']+)?'))[\s]*?(?:$|)/gm, remoteUrlRegExp = /^(http:\/\/|https:\/\/|\/|\.\/|\.\.\/)/i, scopedRuleResolver = ((selectorRegExp = /([\s:+>~])/) => (sheet, rule, name, iterator) => {
+})(), ModuleProfile = ((elementProfileCacheMap = new Map, embeddedType = { json: 'dagger/json', namespace: 'dagger/modules', script: 'dagger/script', style: 'dagger/style', string: 'dagger/string' }, integrityProfileCache = emptier(), mimeType = { html: 'text/html', json: 'application/json', script: ['application/javascript', 'javascript/esm', 'text/javascript'], style: 'text/css' }, relativePathRegExp = /(?:^|;|\s+)(?:export|import)\s*?(?:(?:(?:[$\w*\s{},]*)\s*from\s*?)|)(?:(?:"([^"]+)?")|(?:'([^']+)?'))[\s]*?(?:$|)/gm, scopedRuleResolver = ((selectorRegExp = /([\s:+>~])/) => (sheet, rule, name, iterator) => {
     if (rule instanceof CSSKeyframesRule) {
         const originalName = rule.name;
         rule.name = `${ originalName }-${ name }`;
@@ -1176,7 +1176,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
     const nextRouter = { mode, prefix, path, paths, modules: new Set(resolvedRouters.map(router => router.modules).flat()), query, queries, scenarios, variables, constants, anchor };
     Promise.all([...sentrySet].map(sentry => Promise.resolve(sentry.processor(nextRouter)).then(prevent => ({ sentry, prevent })))).then(results => {
         const matchedOwners = results.filter(result => result.prevent).map(result => result.sentry.owner);
-        matchedOwners.length ? originalReplaceState.call(history, null, '', `${ prefix }${ rootScope.$router.path.substring(1) }`) : routerChangeResolver(nextRouter);
+        matchedOwners.length ? originalPushState.call(history, null, '', `${ prefix }${ rootScope.$router.path.substring(1) }`) : routerChangeResolver(nextRouter);
     });
 })(), Router = class {
     constructor (router, parent = null) {
@@ -1230,7 +1230,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
         if (!target || !target.hasAttribute('href')) { return; }
         const href = target.getAttribute('href').trim();
         if (href.startsWith('#') && anchorResolver(href.substring(1), event)) { return; }
-        if (href && !['.', '/', 'http:', 'https:'].some(prefix => href.startsWith(prefix))) {
+        if (href && !remoteUrlRegExp.test(href)) {
             event.preventDefault();
             history.pushState(null, '', href);
         }
