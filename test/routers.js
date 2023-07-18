@@ -19,10 +19,11 @@ return {
     mode: 'history',
     prefix: 'prefix',
     aliases: {
+        '': 'index1',
         'index': 'index1',
         'demo_local.html': 'index2'
     },
-    default: 'index1',
+    default: '',
     routing: { // path/constants/variables/tailable/modules/children,
         tailable: false,
         constants: {

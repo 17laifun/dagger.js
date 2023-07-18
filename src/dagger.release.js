@@ -1158,7 +1158,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
     if (!rootRouter.match(routers, scenarios, paths)) {
         if (Reflect.has(routerConfigs, 'default')) {
             const defaultPath = routerConfigs.default, resolvedPath = `${ query ? `${ defaultPath }?${ query }` : defaultPath }${ anchor }`;
-            return history.pushState(null, '', resolvedPath);
+            return history.pushState(null, '', resolvedPath || routerConfigs.prefix);
         } else {
             return;
         }
