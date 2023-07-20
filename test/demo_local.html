@@ -71,7 +71,7 @@
   </head>
   <body dg-cloak +click="console.log('body click bubble', $event.currentTarget)" +click#capture="console.log('body click capture', $event.currentTarget)">
     <div id="234">
-    <prefix +loading="{ html: '<button>click</button>'}">
+    <prefix +loading="$router.a = 2, console.log($router), { html: '<button>click</button>'}">
       <!--<template @slot="1">${ item }</template>-->
       <template @slot="1">abcd</template>
       <div @slot="2">default1</div>

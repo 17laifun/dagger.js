@@ -93,7 +93,7 @@
       <button +click="weakSet.add(data1)">weakSet.add(data1)</button>
       <button +click="weakSet.delete(data1)">weakSet.delete(data1)</button>
       <button +click="data1.string = 'str'">data1.string = 'str'</button>
-      <button +click="$router.variables.a = 1">$router.variables.a = 1</button>
+      <button +click="$router.variables.a = 1, console.log($router)">$router.variables.a = 1</button>
       <button +click="json.a = 3">json.a = 3</button>
       <button +click="json.c = 3">json.c = 3</button>
       <button +click="data1.array.push(Math.random())">data1.array.push(Math.random())</button>
