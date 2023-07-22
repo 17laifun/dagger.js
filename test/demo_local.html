@@ -71,13 +71,15 @@
   </head>
   <body dg-cloak +click="console.log('body click bubble', $event.currentTarget)" +click#capture="console.log('body click capture', $event.currentTarget)">
     <div id="234">
-    <prefix +loading="$router.a = 2, console.log($router), { html: '<button>click</button>'}">
-      <!--<template @slot="1">${ item }</template>-->
-      <template @slot="1">abcd</template>
-      <div @slot="2">default1</div>
-    </prefix>
-  </div>
+      <prefix +loading="$router.a = 2, console.log($router), { html: '<button>click</button>'}">
+        <!--<template @slot="1">${ item }</template>-->
+        <template @slot="1">abcd</template>
+        <div @slot="2">default1</div>
+      </prefix>
+    </div>
     <div $exist="$router.path.includes('newpage')" $html="'newpage'"></div>
+    <div $exist="$router.path.includes('401')" $html="'m401'"></div>
+    <div $exist="$router.path.includes('404')" $html="'m404'"></div>
     <button +click="history.pushState({}, '', 'newpage')">click</button>
     <a href="newpage">newpage</a>
     <a href="#anchor1">anchor1</a>

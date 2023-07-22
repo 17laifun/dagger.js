@@ -1135,7 +1135,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
     rootScope.$router = nextRouter;
     if (!routerTopology) {
         rootNodeProfiles.map(nodeProfile => new NodeContext(nodeProfile));
-        routerTopology = [...rootScope.$router[meta]][0];
+        routerTopology = [...nextRouter[meta]][0];
     }
     if (!Object.is(currentStyleModuleSet, styleModuleSet)) {
         currentStyleModuleSet && currentStyleModuleSet.forEach(style => (style.disabled = !styleModuleSet.has(style)));
@@ -1150,18 +1150,20 @@ export default ((context = Symbol('context'), currentController = null, directiv
     const slash = '/', anchorIndex = location.hash.lastIndexOf('#@'), anchor = (anchorIndex >= 0) ? location.hash.substring(anchorIndex + 2) : '';
     let fullPath = ((Object.is(routerConfigs.mode, 'history') ? `${ location.pathname }${ location.search }` : location.hash.replace(anchor, ''))).replace(routerConfigs.prefix, '');
     fullPath.startsWith(slash) || (fullPath = `${ slash }${ fullPath }`);
-    const { mode, aliases, prefix } = routerConfigs, [path = '', query = ''] = fullPath.split('?'), redirectPath = aliases[path.substring(1)];
+    const { mode, aliases, prefix } = routerConfigs, [path = '', query = ''] = fullPath.split('?'), scenarios = {}, paths = Object.is(path, slash) ? [''] : path.split(slash), routers = [];
+    let redirectPath = aliases[path.substring(1)];
     if (redirectPath) {
-        return history.replaceState(null, '', `${ query ? `${ redirectPath }?${ query }` : redirectPath }${ anchor }`);
-    }
-    const scenarios = {}, paths = Object.is(path, slash) ? [''] : path.split(slash), routers = [];
-    if (!rootRouter.match(routers, scenarios, paths)) {
+    } else if (rootRouter.match(routers, scenarios, paths)) {
+        redirectPath = (routers.find(router => router.redirectPath || Object.is(router.redirectPath, '')) || {}).redirectPath;
+    } else {
         if (Reflect.has(routerConfigs, 'default')) {
-            const defaultPath = routerConfigs.default, resolvedPath = `${ query ? `${ defaultPath }?${ query }` : defaultPath }${ anchor }`;
-            return history.pushState(null, '', resolvedPath || routerConfigs.prefix);
+            redirectPath = routerConfigs.default;
         } else {
             return;
         }
+    }
+    if (redirectPath != null) {
+        return history.replaceState(null, '', `${ query ? `${ redirectPath }?${ query }` : redirectPath }${ anchor }` || routerConfigs.prefix);
     }
     const resolvedRouters = routers.slice().reverse(), queries = {}, variables = Object.assign({}, ...resolvedRouters.map(router => router.variables)), constants = Object.assign({}, ...resolvedRouters.map(router => router.constants));
     query && forEach([...new URLSearchParams(query)], ([key, value]) => (queries[key] = value));
@@ -1180,7 +1182,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
     });
 })(), Router = class {
     constructor (router, parent = null) {
-        const { children, constants = {}, variables = {}, modules = [], tailable = false, match = '' } = router;
+        const { children, constants = {}, variables = {}, modules = [], tailable = false, redirect = '' } = router;
         let path = (router.path || '').trim();
         this.modules = arrayWrapper(modules);
         if (parent) {
@@ -1190,23 +1192,22 @@ export default ((context = Symbol('context'), currentController = null, directiv
             path = '';
             this.path = '';
         }
-        if (parent && Reflect.has(router, 'match') && !((match instanceof Function) ? match(rootScope, rootNamespace.module) : functionResolver(`($module, $scope) => { with ($module) with ($scope) return (() => { 'use strict'; return ${ match }; })() }`)(rootNamespace.module, rootScope))) {
-            this.invalid = true;
-            return;
+        if (redirect) {
+            this.redirectPath = (redirect instanceof Function) ? redirect(rootScope, rootNamespace.module) : functionResolver(`($module, $scope) => { with ($module) with ($scope) return (() => { 'use strict'; return ${ redirect }; })() }`)(rootNamespace.module, rootScope);
         }
         this.constants = constants, this.variables = variables, this.children = null, this.parent = parent, this.scenarios = (path instanceof Object) ? Object.keys(path).map(scenario => ({ scenario, regExp: new RegExp(path[scenario] || '^$') })) : [{ scenario: path, regExp: new RegExp(`^${ path }$`) }];
-        children && (this.children = children.map(child => new Router(child, this)).filter(child => !child.invalid));
+        children && (this.children = children.map(child => new Router(child, this)));
         this.tailable = tailable || !(this.children || []).length;
     }
     match (routers, scenarios, paths, length = paths.length, start = 0) {
         const scenarioLength = this.scenarios.length;
         if ((length >= scenarioLength) && this.scenarios.every(({ scenario, regExp }, index) => {
-                const path = paths[start + index];
-                if (regExp.test(path)) {
-                    scenarios[scenario] = path;
-                    return true;
-                }
-            })) {
+            const path = paths[start + index];
+            if (regExp.test(path)) {
+                scenarios[scenario] = path;
+                return true;
+            }
+        })) {
             start += scenarioLength;
             return ((Object.is(length, start) && this.tailable) || (this.children || []).find(child => child.match(routers, scenarios, paths, length, start))) && routers.push(this);
         }

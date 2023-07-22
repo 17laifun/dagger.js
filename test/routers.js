@@ -31,8 +31,15 @@ return {
         },
         modules: ['modules', 'root_style', 'test_script', 'script', 'component', 'prefix', 'suffix'],
         children: [{
+            path: '401',
+            modules: 'm401'
+        }, {
+            path: '404',
+            modules: 'm404'
+        }, {
             path: 'newpage',
-            modules: 'newpage'
+            modules: 'newpage',
+            redirect: ({ item }) => item > 123 ? 0 : 404
         }, {
             path: 'index1',
             constants: {

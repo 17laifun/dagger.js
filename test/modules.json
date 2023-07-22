@@ -22,6 +22,14 @@
         }
     },
     "newpage": "/newpage.html",
+    "m401": {
+        "content": "You don't have permission to visit this page.",
+        "type": "view"
+    },
+    "m404": {
+        "content": "The page does not exist.",
+        "type": "view"
+    },
     "controllers": "http://localhost:8283/controllers.html",
     "focus": "http://localhost:8283/modules/focus.html",
     "boolean": "http://localhost:8283/modules/boolean.html",
