@@ -39,7 +39,7 @@ return {
         }, {
             path: 'newpage',
             modules: 'newpage',
-            redirect: ({ item }) => item > 123 ? 0 : 404
+            redirect: scope => scope.item > 123 ? 0 : 404
         }, {
             path: 'index1',
             constants: {

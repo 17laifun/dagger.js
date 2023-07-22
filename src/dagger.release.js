@@ -1154,6 +1154,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
     let redirectPath = aliases[path.substring(1)];
     if (redirectPath) {
     } else if (rootRouter.match(routers, scenarios, paths)) {
+        routers.reverse();
         redirectPath = (routers.find(router => router.redirectPath || Object.is(router.redirectPath, '')) || {}).redirectPath;
     } else {
         if (Reflect.has(routerConfigs, 'default')) {
@@ -1165,7 +1166,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
     if (redirectPath != null) {
         return history.replaceState(null, '', `${ query ? `${ redirectPath }?${ query }` : redirectPath }${ anchor }` || routerConfigs.prefix);
     }
-    const resolvedRouters = routers.slice().reverse(), queries = {}, variables = Object.assign({}, ...resolvedRouters.map(router => router.variables)), constants = Object.assign({}, ...resolvedRouters.map(router => router.constants));
+    const queries = {}, variables = Object.assign({}, ...routers.map(router => router.variables)), constants = Object.assign({}, ...routers.map(router => router.constants));
     query && forEach([...new URLSearchParams(query)], ([key, value]) => (queries[key] = value));
     forEach(Object.keys(variables), key => {
         if (Reflect.has(queries, key) && !Reflect.has(constants, key)) {
@@ -1175,7 +1176,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
             } catch (error) {}
         }
     });
-    const nextRouter = { url: location.href, mode, prefix, path, paths, modules: new Set(resolvedRouters.map(router => router.modules).flat()), query, queries, scenarios, variables, constants, anchor };
+    const nextRouter = { url: location.href, mode, prefix, path, paths, modules: new Set(routers.map(router => router.modules).flat()), query, queries, scenarios, variables, constants, anchor };
     Promise.all([...sentrySet].map(sentry => Promise.resolve(sentry.processor(nextRouter)).then(prevent => ({ sentry, prevent })))).then(results => {
         const matchedOwners = results.filter(result => result.prevent).map(result => result.sentry.owner);
         matchedOwners.length ? originalPushState.call(history, null, '', rootScope.$router.url) : routerChangeResolver(nextRouter);
