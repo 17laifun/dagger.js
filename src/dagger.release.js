@@ -1134,8 +1134,8 @@ export default ((context = Symbol('context'), currentController = null, directiv
     const currentStyleModuleSet = rootScope.$router && styleModuleCache[rootScope.$router.path];
     rootScope.$router = nextRouter;
     if (!routerTopology) {
-        rootNodeProfiles.map(nodeProfile => new NodeContext(nodeProfile));
         routerTopology = [...nextRouter[meta]][0];
+        rootNodeProfiles.map(nodeProfile => new NodeContext(nodeProfile));
     }
     if (!Object.is(currentStyleModuleSet, styleModuleSet)) {
         currentStyleModuleSet && currentStyleModuleSet.forEach(style => (style.disabled = !styleModuleSet.has(style)));
@@ -1151,17 +1151,16 @@ export default ((context = Symbol('context'), currentController = null, directiv
     let fullPath = ((Object.is(routerConfigs.mode, 'history') ? `${ location.pathname }${ location.search }` : location.hash.replace(anchor, ''))).replace(routerConfigs.prefix, '');
     fullPath.startsWith(slash) || (fullPath = `${ slash }${ fullPath }`);
     const { mode, aliases, prefix } = routerConfigs, [path = '', query = ''] = fullPath.split('?'), scenarios = {}, paths = Object.is(path, slash) ? [''] : path.split(slash), routers = [];
-    let redirectPath = aliases[path.substring(1)];
-    if (redirectPath) {
+    let redirectPath = null;
+    if (Reflect.has(aliases, path.substring(1))) {
+        redirectPath = aliases[path.substring(1)];
     } else if (rootRouter.match(routers, scenarios, paths)) {
         routers.reverse();
         redirectPath = (routers.find(router => router.redirectPath || Object.is(router.redirectPath, '')) || {}).redirectPath;
+    } else if (Reflect.has(routerConfigs, 'default')) {
+        redirectPath = routerConfigs.default;
     } else {
-        if (Reflect.has(routerConfigs, 'default')) {
-            redirectPath = routerConfigs.default;
-        } else {
-            return;
-        }
+        return;
     }
     if (redirectPath != null) {
         return history.replaceState(null, '', `${ query ? `${ redirectPath }?${ query }` : redirectPath }${ anchor }` || routerConfigs.prefix);
