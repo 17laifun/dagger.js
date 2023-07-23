@@ -1150,10 +1150,10 @@ export default ((context = Symbol('context'), currentController = null, directiv
     const slash = '/', anchorIndex = location.hash.lastIndexOf('#@'), anchor = (anchorIndex >= 0) ? location.hash.substring(anchorIndex + 2) : '';
     let fullPath = ((Object.is(routerConfigs.mode, 'history') ? `${ location.pathname }${ location.search }` : location.hash.replace(anchor, ''))).replace(routerConfigs.prefix, '');
     fullPath.startsWith(slash) || (fullPath = `${ slash }${ fullPath }`);
-    const { mode, aliases, prefix } = routerConfigs, [path = '', query = ''] = fullPath.split('?'), scenarios = {}, paths = Object.is(path, slash) ? [''] : path.split(slash), routers = [];
+    const { mode, aliases, prefix } = routerConfigs, [rawPath = '', query = ''] = fullPath.split('?'), path = rawPath.substring(1), scenarios = {}, paths = Object.is(path, slash) ? [''] : path.split(slash), routers = [];
     let redirectPath = null;
-    if (Reflect.has(aliases, path.substring(1))) {
-        redirectPath = aliases[path.substring(1)];
+    if (Reflect.has(aliases, path)) {
+        redirectPath = aliases[path];
     } else if (rootRouter.match(routers, scenarios, paths)) {
         routers.reverse();
         redirectPath = (routers.find(router => router.redirectPath || Object.is(router.redirectPath, '')) || {}).redirectPath;
