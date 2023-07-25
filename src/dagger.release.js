@@ -348,7 +348,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
     resolveNamespace (config, base, childNameSet = null) {
         this.parent && moduleConfigNormalizer(config);
         this.children || (this.children = Object.entries(config).map(([name, config]) => new ModuleProfile(config, base, name, this)));
-        this.module = emptier();
+        this.module = this.module || emptier();
         return Promise.all((childNameSet ? this.children.filter(child => childNameSet.has(child.name)) : this.children).map(child => child.resolve()));
     }
     resolveRemoteType (content, type, url) {

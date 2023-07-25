@@ -454,7 +454,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
                 asserter(`The modules "${ [...childNameSet].join(', ') }" is not declared in the root namespace`);
             }
         }
-        this.module = emptier();
+        this.module = this.module || emptier();
         return Promise.all(children.map(child => child.resolve()));
     }
     resolveRemoteType (content, type, url) {
@@ -1276,8 +1276,8 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         return;
     }
 }, routingChangeResolver = ((routerChangeResolver = ((resolver = nextRouter => {
-    groupEnder(`resolving modules of the router "${ nextRouter.path }"`);
-    logger(`\u2705 router has changed from "${ (rootScope.$router || {}).path || '/' }" to "${ nextRouter.path }"`);
+    groupEnder(`resolving modules of the router "${ nextRouter.path || '/' }"`);
+    logger(`\u2705 router has changed from "${ (rootScope.$router || {}).path || '/' }" to "${ nextRouter.path || '/' }"`);
     processorResolver();
     const currentStyleModuleSet = rootScope.$router && styleModuleCache[rootScope.$router.path];
     isRouterWritable = true;
@@ -1293,7 +1293,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     }
     anchorResolver(nextRouter.anchor);
 }) => nextRouter => {
-    logger(`\u23f3 router is changing from "${ (rootScope.$router || {}).path || '/' }" to "${ nextRouter.path }"...`);
+    logger(`\u23f3 router is changing from "${ (rootScope.$router || {}).path || '/' }" to "${ nextRouter.path || '/' }"...`);
     const path = nextRouter.path;
     styleModuleSet = styleModuleCache[path] || (styleModuleCache[path] = new Set);
     groupStarter(`resolving modules of the router "${ nextRouter.path }"`);
