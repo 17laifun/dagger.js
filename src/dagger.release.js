@@ -118,7 +118,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
     return template.content;
 }, selectorInjector = (element, tags) => forEach(element.children, child => {
     if (Object.is(child.tagName, 'TEMPLATE')) {
-        child.getAttribute('$html') && (child.$tags = tags);
+        (child.hasAttribute('@slot') || child.hasAttribute('$html')) && (child.$tags = tags);
         selectorInjector(child.content, tags);
     } else if (child instanceof HTMLElement) {
         forEach(tags, tag => child.setAttribute(tag, ''));
@@ -280,7 +280,9 @@ export default ((context = Symbol('context'), currentController = null, directiv
         } else if (Object.is(type, moduleType.script)) {
             return import(`data:text/javascript, ${ encodeURIComponent(content.replace(relativePathRegExp, (match, url1, url2) => match.replace(url1 || url2, new URL(url1 || url2, this.base)))) }`);
         } else if (Object.is(type, moduleType.view)) {
-            const nodeProfile = new NodeProfile(templateResolver(content), this.parent, null, null, false, {});
+            const fragment = templateResolver(content);
+            selectorInjector(fragment, this.parent.tags);
+            const nodeProfile = new NodeProfile(fragment, this.parent, null, null, false, {});
             return Promise.all(nodeProfile.promises || []).then(() => nodeProfile);
         } else if (Object.is(type, moduleType.style)) {
             return styleResolver(content, `${ this.path }-template`, true);
@@ -325,8 +327,6 @@ export default ((context = Symbol('context'), currentController = null, directiv
             this.children || (this.children = resolvedContent);
             this.config.explicit && (this.config.anonymous ? Object.assign(this.parent.module, module) : (this.parent.module[this.name] = module));
             this.parent && this.parent.resolve().then(moduleProfile => Object.setPrototypeOf(module, moduleProfile.module));
-        } else if (Object.is(type, moduleType.view)) {
-            selectorInjector(module.node, this.parent.tags);
         } else if (Object.is(type, moduleType.script)) {
             module = scriptModuleResolver(module, emptier());
             Object.is(this.config.anonymous, false) ? (this.parent.module[this.name] = module) : Object.assign(this.parent.module, module);

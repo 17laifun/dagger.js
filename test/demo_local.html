@@ -27,6 +27,7 @@
         <div class="component">${ component }</div>
     </template>
     <template id="prefix">
+      <template @slot></template>
       <button @slot="1">c1</button>
       <button @slot="2">c2</button>
       <div class="ssss"><template +loading="{ item: 0 }" @slot>hello ${ item }</template></div>
@@ -71,9 +72,10 @@
   </head>
   <body dg-cloak +click="console.log('body click bubble', $event.currentTarget)" +click#capture="console.log('body click capture', $event.currentTarget)">
     <prefix +loading="{ html: '<button>click</button>'}">
-      <!--<template @slot="1">${ item }</template>-->
+      <!--<template @slot="1">${ item }</template>
       <template @slot="1">abcd</template>
-      <div @slot="2">default1</div>
+      <div @slot="2">default1</div>-->
+      <div class="test">test123</div>
     </prefix>
     <div $exist="$router.path.includes('newpage')" $html="'newpage'"></div>
     <div $exist="$router.path.includes('401')" $html="'m401'"></div>
