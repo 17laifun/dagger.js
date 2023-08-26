@@ -224,6 +224,9 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     isRootScope ? data[meta].add(new Topology(null, '', data)) : (target[property] = data);
     return data;
 })(), ModuleProfile = ((elementProfileCacheMap = new Map, embeddedType = { json: 'dagger/json', namespace: 'dagger/modules', script: 'dagger/script', style: 'dagger/style', string: 'dagger/string' }, integrityProfileCache = emptier(), mimeType = { html: 'text/html', json: 'application/json', script: ['application/javascript', 'javascript/esm', 'text/javascript'], style: 'text/css' }, relativePathRegExp = /(?:^|;|\s+)(?:export|import)\s*?(?:(?:(?:[$\w*\s{},]*)\s*from\s*?)|)(?:(?:"([^"]+)?")|(?:'([^']+)?'))[\s]*?(?:$|)/gm, textEncoder = new TextEncoder(), scopedRuleResolver = ((selectorRegExp = /([\s:+>~])/) => (sheet, rule, name, iterator) => {
+    if (Object.is(rule.selectorText, ':root')) {
+        return sheet.insertRule(rule.cssText, iterator.index++);
+    }
     if (rule instanceof CSSKeyframesRule) {
         const originalName = rule.name;
         rule.name = `${ originalName }-${ name }`;
