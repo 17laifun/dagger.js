@@ -223,7 +223,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     }
     isRootScope ? data[meta].add(new Topology(null, '', data)) : (target[property] = data);
     return data;
-})(), ModuleProfile = ((elementProfileCacheMap = new Map, embeddedType = { json: 'dagger/json', namespace: 'dagger/modules', script: 'dagger/script', style: 'dagger/style', string: 'dagger/string' }, integrityProfileCache = emptier(), mimeType = { html: 'text/html', json: 'application/json', script: ['application/javascript', 'javascript/esm', 'text/javascript'], style: 'text/css' }, relativePathRegExp = /(?:^|;|\s+)(?:export|import)\s*?(?:(?:(?:[$\w*\s{},]*)\s*from\s*?)|)(?:(?:"([^"]+)?")|(?:'([^']+)?'))[\s]*?(?:$|)/gm, textEncoder = new TextEncoder(), scopedRuleResolver = ((selectorRegExp = /([\s:+>~])/) => (sheet, rule, name, iterator) => {
+})(), ModuleProfile = ((elementProfileCacheMap = new Map, embeddedType = { json: 'dagger/json', namespace: 'dagger/modules', script: 'dagger/script', style: 'dagger/style', string: 'dagger/string' }, integrityProfileCache = emptier(), mimeType = { html: 'text/html', json: 'application/json', script: ['application/javascript', 'javascript/esm', 'text/javascript'], style: 'text/css' }, relativePathRegExp = /(?:^|;|\s+)(?:export|import)\s*?(?:(?:(?:[$\w*\s{},]*)\s*from\s*?)|)(?:(?:"([^"]+)?")|(?:'([^']+)?'))[\s]*?(?:$|)/gm, textEncoder = new TextEncoder(), scopedRuleResolver = ((selectorRegExp = /([\s:+>~])/, whitelist = [':root', ':scope', 'html', 'body']) => (sheet, rule, name, iterator) => {
     if (rule instanceof CSSKeyframesRule) {
         const originalName = rule.name;
         rule.name = `${ originalName }-${ name }`;
@@ -235,7 +235,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     } else if (rule.selectorText) {
         const style = rule.style, originalAnimationName = style.animationName;
         originalAnimationName && (style.animationName = `${ originalAnimationName }-${ name }`);
-        sheet.insertRule(`${ rule.selectorText.split(',').map(selector => (selector = selector.trim()) && (((selector.includes(':root') || selector.includes(':scope')) && selector) || `${ selectorRegExp.test(selector) ? selector.replace(selectorRegExp, `[${ name }]$1`) : `${ selector }[${ name }]` }, [${ name }] ${ selector }`)).join(', ') }{${ style.cssText }}`, iterator.index++);
+        sheet.insertRule(`${ rule.selectorText.split(',').map(selector => (selector = selector.trim()) && ((whitelist.some(key => selector.startsWith(key)) && selector) || `${ selectorRegExp.test(selector) ? selector.replace(selectorRegExp, `[${ name }]$1`) : `${ selector }[${ name }]` }, [${ name }] ${ selector }`)).join(', ') }{${ style.cssText }}`, iterator.index++);
         originalAnimationName && (style.animationName = originalAnimationName);
     }
 })(), scriptModuleResolver = (module, resolvedModule) => {
