@@ -915,7 +915,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
                 rootNodeProfiles && node.removeAttribute(cloak);
             } else {
                 const controllers = [], eventHandlers = [], directives = { controllers, eventHandlers }, name = caseResolver(tagName.toLowerCase()), moduleProfile = Object.is(node.constructor, HTMLUnknownElement) && namespace.fetchViewModule(name.split('.')[0]), resolved = Object.is(moduleProfile.state, 'resolved'), dynamicDirective = '@directive', dynamic = attributes[dynamicDirective], slotDirective = '@slot';
-                if (moduleProfile || Object.is(name, 'template')) {
+                if (moduleProfile) {
                     this.virtual = true;
                     this.resolveLandmark(node);
                 }
@@ -948,8 +948,16 @@ export default ((context = Symbol('context'), currentController = null, directiv
                 rootNodeProfiles && (this.plain ? (node.hasAttribute(cloak) && forEach(node.children, child => child.setAttribute(cloak, '')) || node.removeAttribute(cloak)) : (rootNodeProfiles.push(this) && (rootNodeProfiles = null)));
                 if (moduleProfile) {
                     resolved && this.resolveViewModule(moduleProfile.fetch(name.split('.').slice(1)));
-                } else if (!directives.child) {
-                    this.resolveChildren(node, rootNodeProfiles);
+                } else {
+                    if (Object.is(name, 'template')) {
+                        if (this.plain) {
+                            (this.raw = true) && (this.plain = false);
+                        } else {
+                            this.virtual = true;
+                            this.resolveLandmark(node, 'virtual node removed');
+                        }
+                    }
+                    this.raw || directives.child || this.resolveChildren(node, rootNodeProfiles);
                 }
             }
             if (parent) {

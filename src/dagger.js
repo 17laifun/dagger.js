@@ -1047,7 +1047,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
             } else {
                 const controllers = [], eventHandlers = [], directives = { controllers, eventHandlers }, name = caseResolver(tagName.toLowerCase()), moduleProfile = Object.is(node.constructor, HTMLUnknownElement) && namespace.fetchViewModule(name.split('.')[0]), resolved = Object.is(moduleProfile.state, 'resolved'), dynamicDirective = '@directive', dynamic = attributes[dynamicDirective], slotDirective = '@slot';
                 moduleProfile && asserter(`It is illegal to use "$html" or "$text" directive on view module "${ name }"`, !node.hasAttribute('$html') && !node.hasAttribute('$text'));
-                if (moduleProfile || Object.is(name, 'template')) {
+                if (moduleProfile) {
                     this.virtual = true;
                     this.resolveLandmark(node, 'virtual node removed');
                 }
@@ -1082,8 +1082,16 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
                 rootNodeProfiles && (this.plain ? (node.hasAttribute(cloak) && forEach(node.children, child => child.setAttribute(cloak, '')) || node.removeAttribute(cloak)) : (rootNodeProfiles.push(this) && (rootNodeProfiles = null)));
                 if (moduleProfile) {
                     resolved && this.resolveViewModule(moduleProfile.fetch(name.split('.').slice(1)));
-                } else if (!directives.child) {
-                    this.resolveChildren(node, rootNodeProfiles);
+                } else {
+                    if (Object.is(name, 'template')) {
+                        if (this.plain) {
+                            (this.raw = true) && (this.plain = false);
+                        } else {
+                            this.virtual = true;
+                            this.resolveLandmark(node, 'virtual node removed');
+                        }
+                    }
+                    this.raw || directives.child || this.resolveChildren(node, rootNodeProfiles);
                 }
             }
             if (parent) {
@@ -1318,7 +1326,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         asserter(`The router "${ path }" is invalid`);
     }
     if (redirectPath != null) {
-        logger(`The router is redirecting from "${ path }" to "${ redirectPath }"`);
+        logger(`The router is redirecting from "${ path }" to "${ redirectPath || '/' }"`);
         return history.replaceState(null, '', `${ query ? `${ redirectPath }?${ query }` : redirectPath }${ anchor }` || routerConfigs.prefix);
     }
     const queries = {}, variables = Object.assign({}, ...routers.map(router => router.variables)), constants = Object.assign({}, ...routers.map(router => router.constants));
