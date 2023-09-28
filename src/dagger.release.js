@@ -954,7 +954,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
                             (this.raw = true) && (this.plain = false);
                         } else {
                             this.virtual = true;
-                            this.resolveLandmark(node, 'virtual node removed');
+                            this.resolveLandmark(node);
                         }
                     }
                     this.raw || directives.child || this.resolveChildren(node, rootNodeProfiles);
