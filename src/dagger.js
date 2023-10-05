@@ -816,8 +816,8 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
             if (scope) {
                 const constructor = scope.constructor;
                 if (Object.is(constructor, Object) || (!constructor && Object.is(typeof scope, 'object'))) {
-                    const { root, plain } = loading.decorators;
-                    this.resolveScope(scope, plain, root);
+                    const { init, plain, root } = loading.decorators;
+                    this.resolveScope(scope, plain, root, init);
                 }
             }
             this.initialize();
@@ -934,7 +934,17 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     resolvePromise (promise, callback) {
         (promise instanceof Promise) ? promise.then(callback) : callback(promise);
     }
-    resolveScope (scope, plain, root) {
+    resolveScope (scope, plain, root, init) {
+        if (init) {
+            const moduleProfile = this.profile.moduleProfile;
+            if (moduleProfile) {
+                const initScope = moduleProfile.config.initScope;
+                if (initScope) {
+                    this.resolveScope(initScope, plain, root);
+                    return this.resolveScope(scope, plain);
+                }
+            }
+        }
         plain || (scope = proxyResolver(scope));
         this.scope = Object.setPrototypeOf(scope, root ? rootScope : this.scope);
         return scope;
@@ -1022,7 +1032,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
     return directive;
 })(), NodeProfile = class {
     constructor (node, namespace = rootNamespace, rootNodeProfiles = null, parent = null, unique = false, defaultSlotScope = null) {
-        this.node = node, this.namespace = namespace, this.unique = unique, this.defaultSlotScope = defaultSlotScope || (parent || {}).defaultSlotScope || null, this.dynamic = this.plain = this.raw = this.virtual = false, this.text = this.inlineStyle = this.styles = this.directives = this.landmark = this.children = this.classNames = this.html = this.slotScope = null;
+        this.node = node, this.namespace = namespace, this.unique = unique, this.defaultSlotScope = defaultSlotScope || (parent || {}).defaultSlotScope || null, this.dynamic = this.plain = this.raw = this.virtual = false, this.text = this.inlineStyle = this.styles = this.directives = this.landmark = this.children = this.classNames = this.html = this.slotScope = this.moduleProfile = null;
         const type = node.nodeType;
         if (Object.is(type, Node.TEXT_NODE)) {
             const resolvedTextContent = node.textContent.trim();
@@ -1206,9 +1216,12 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         return this.landmark;
     }
     resolveViewModule (moduleProfile) {
-        const module = moduleProfile.module, isViewModule = module instanceof NodeProfile, view = isViewModule ? module : moduleProfile.fetchChild('view').module;
+        const module = moduleProfile.module, isViewModule = module instanceof NodeProfile;
+        isViewModule || (moduleProfile = moduleProfile.fetchChild('view'));
+        const view = isViewModule ? module : moduleProfile.module;
         asserter(`"${ moduleProfile.path }" or "${ moduleProfile.path }.view" is not a valid view module`, view instanceof NodeProfile);
         this.children = view.children;
+        this.moduleProfile = moduleProfile;
         this.defaultSlotScope = view.defaultSlotScope;
         if (Object.keys(this.defaultSlotScope).length) {
             const slotScope = {}, emptySlot = '_$slot_', slotDirective = '@slot';

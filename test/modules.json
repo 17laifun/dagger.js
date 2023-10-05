@@ -7,7 +7,13 @@
         "uri": "#component"
     }],
     "root_style": "#root_style",
-    "prefix": "#prefix",
+    "prefix": {
+        "uri": "#prefix",
+        "initScope": {
+            "a": "str",
+            "b": [1, 2, 3]
+        }
+    },
     "suffix": "#suffix",
     "@script": {
         "test_script": "#index_test_script"
