@@ -938,7 +938,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         if (init) {
             const moduleProfile = this.profile.moduleProfile;
             if (moduleProfile) {
-                const initScope = moduleProfile.config.initScope;
+                const initScope = moduleProfile.config.init;
                 if (initScope) {
                     this.resolveScope(initScope, plain, root);
                     return this.resolveScope(scope, plain);
@@ -1146,7 +1146,8 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
                         asserter([`Failed to resolve the directive decorator "${ decorator }" for element "%o", the decorator value should be valid "JSON string"`, this.node]);
                     }
                 } else {
-                    decorators[name] = value;
+                    debugger
+                    decorators[name] = Object.is(value, 'false') ? false : value;
                 }
             } else {
                 decorators[name] = name;
@@ -1216,10 +1217,10 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         return this.landmark;
     }
     resolveViewModule (moduleProfile) {
-        const module = moduleProfile.module, isViewModule = module instanceof NodeProfile;
+        const module = moduleProfile.module, path = moduleProfile.path, isViewModule = module instanceof NodeProfile;
         isViewModule || (moduleProfile = moduleProfile.fetchChild('view'));
         const view = isViewModule ? module : moduleProfile.module;
-        asserter(`"${ moduleProfile.path }" or "${ moduleProfile.path }.view" is not a valid view module`, view instanceof NodeProfile);
+        asserter(`"${ path }" or "${ path }.view" is not a valid view module`, view instanceof NodeProfile);
         this.children = view.children;
         this.moduleProfile = moduleProfile;
         this.defaultSlotScope = view.defaultSlotScope;

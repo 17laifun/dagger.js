@@ -693,8 +693,8 @@ export default ((context = Symbol('context'), currentController = null, directiv
             if (scope) {
                 const constructor = scope.constructor;
                 if (Object.is(constructor, Object) || (!constructor && Object.is(typeof scope, 'object'))) {
-                    const { root, plain } = loading.decorators;
-                    this.resolveScope(scope, plain, root);
+                    const { init, plain, root } = loading.decorators;
+                    this.resolveScope(scope, plain, root, init);
                 }
             }
             this.initialize();
@@ -810,7 +810,17 @@ export default ((context = Symbol('context'), currentController = null, directiv
     resolvePromise (promise, callback) {
         (promise instanceof Promise) ? promise.then(callback) : callback(promise);
     }
-    resolveScope (scope, plain, root) {
+    resolveScope (scope, plain, root, init) {
+        if (init) {
+            const moduleProfile = this.profile.moduleProfile;
+            if (moduleProfile) {
+                const initScope = moduleProfile.config.init;
+                if (initScope) {
+                    this.resolveScope(initScope, plain, root);
+                    return this.resolveScope(scope, plain);
+                }
+            }
+        }
         plain || (scope = proxyResolver(scope));
         this.scope = Object.setPrototypeOf(scope, root ? rootScope : this.scope);
         return scope;
@@ -894,7 +904,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
     return directive;
 })(), NodeProfile = class {
     constructor (node, namespace = rootNamespace, rootNodeProfiles = null, parent = null, unique = false, defaultSlotScope = null) {
-        this.node = node, this.namespace = namespace, this.unique = unique, this.defaultSlotScope = defaultSlotScope || (parent || {}).defaultSlotScope || null, this.dynamic = this.plain = this.raw = this.virtual = false, this.text = this.inlineStyle = this.styles = this.directives = this.landmark = this.children = this.classNames = this.html = this.slotScope = null;
+        this.node = node, this.namespace = namespace, this.unique = unique, this.defaultSlotScope = defaultSlotScope || (parent || {}).defaultSlotScope || null, this.dynamic = this.plain = this.raw = this.virtual = false, this.text = this.inlineStyle = this.styles = this.directives = this.landmark = this.children = this.classNames = this.html = this.slotScope = this.moduleProfile = null;
         const type = node.nodeType;
         if (Object.is(type, Node.TEXT_NODE)) {
             const resolvedTextContent = node.textContent.trim();
@@ -995,7 +1005,7 @@ export default ((context = Symbol('context'), currentController = null, directiv
                 if (['every', 'some'].includes(name)) {
                     decorators[name] = JSON.parse(value);
                 } else {
-                    decorators[name] = value;
+                    decorators[name] = Object.is(value, 'false') ? false : value;
                 }
             } else {
                 decorators[name] = name;
@@ -1063,8 +1073,11 @@ export default ((context = Symbol('context'), currentController = null, directiv
         return this.landmark;
     }
     resolveViewModule (moduleProfile) {
-        const module = moduleProfile.module, isViewModule = module instanceof NodeProfile, view = isViewModule ? module : moduleProfile.fetchChild('view').module;
+        const module = moduleProfile.module, isViewModule = module instanceof NodeProfile;
+        isViewModule || (moduleProfile = moduleProfile.fetchChild('view'));
+        const view = isViewModule ? module : moduleProfile.module;
         this.children = view.children;
+        this.moduleProfile = moduleProfile;
         this.defaultSlotScope = view.defaultSlotScope;
         if (Object.keys(this.defaultSlotScope).length) {
             const slotScope = {}, emptySlot = '_$slot_', slotDirective = '@slot';
