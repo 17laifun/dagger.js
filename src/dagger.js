@@ -1138,19 +1138,10 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         const [name, ...rawDecorators] = caseResolver(attributeName.substring(1)).split('#'), decorators = emptier(), fields = { decorators };
         forEach(rawDecorators.filter(decorator => decorator), decorator => {
             const [name, value] = decorator.split(':').map(content => decodeURIComponent(content).trim());
-            if (value) {
-                if (['every', 'some'].includes(name)) {
-                    try {
-                        decorators[name] = JSON.parse(value);
-                    } catch (error) {
-                        asserter([`Failed to resolve the directive decorator "${ decorator }" for element "%o", the decorator value should be valid "JSON string"`, this.node]);
-                    }
-                } else {
-                    debugger
-                    decorators[name] = Object.is(value, 'false') ? false : value;
-                }
-            } else {
-                decorators[name] = name;
+            try {
+                decorators[name] = value ? JSON.parse(value) : name;
+            } catch (error) {
+                decorators[name] = value;
             }
         });
         if (Object.is(resolvedType, 'event')) {

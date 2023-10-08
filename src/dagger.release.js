@@ -1001,14 +1001,10 @@ export default ((context = Symbol('context'), currentController = null, directiv
         const [name, ...rawDecorators] = caseResolver(attributeName.substring(1)).split('#'), decorators = emptier(), fields = { decorators };
         forEach(rawDecorators.filter(decorator => decorator), decorator => {
             const [name, value] = decorator.split(':').map(content => decodeURIComponent(content).trim());
-            if (value) {
-                if (['every', 'some'].includes(name)) {
-                    decorators[name] = JSON.parse(value);
-                } else {
-                    decorators[name] = Object.is(value, 'false') ? false : value;
-                }
-            } else {
-                decorators[name] = name;
+            try {
+                decorators[name] = value ? JSON.parse(value) : name;
+            } catch (error) {
+                decorators[name] = value;
             }
         });
         if (Object.is(resolvedType, 'event')) {
